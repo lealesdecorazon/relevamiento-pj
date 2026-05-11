@@ -1563,16 +1563,16 @@
     const SUPABASE_URL = 'https://pozdhwfwliajwcwkhprf.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_k-JYvlGFM9F8iomhEoFxiQ_tBkQVXK3';
 
-    // Headers que van en cada pedido a Supabase
-    const sbHeaders = {
+    // Headers globales — se actualizan con el token real al hacer login
+    window.sbHeaders = {
       'apikey':        SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type':  'application/json',
       'Prefer':        'return=representation'
     };
 
-    // Usuario logueado actualmente (se completa en login)
-    let currentUser = null;
+    // Usuario logueado — global para que sea accesible desde cualquier función
+    window.currentUser = null;
 
     // ── LOGIN ────────────────────────────────────────────────────────────
     function mostrarLogin() {
