@@ -2285,9 +2285,20 @@
     }
 
     // =================== MODAL ===================
-    function openModal(id) {
-      const a = PADRON.find(x => x.id === id);
-      if (!a) return;
+    async function openModal(id) {
+      // Buscar por id numérico; si no encuentra, buscar por id string
+      // (puede pasar si la tabla se renderizó antes de que Supabase devuelva los IDs reales)
+      // Normalizar: Supabase devuelve IDs numéricos, el HTML los puede pasar como string
+      const idNum = parseInt(id);
+      let a = PADRON.find(x => x.id === idNum || x.id === id);
+      if (!a) {
+        // Si no encuentra por ID, puede ser que la tabla esté desactualizada
+        // Recargar datos y volver a intentar
+        console.warn('openModal: ID', id, 'no encontrado. Recargando PADRON...');
+        await cargarDatos();
+        a = PADRON.find(x => x.id === idNum || x.id === id);
+        if (!a) { console.error('Afiliado no encontrado tras recarga'); return; }
+      }
       selectedAfiliadoId = id;
 
       document.getElementById('modalNombre').textContent = `${a.apellido}, ${a.nombre}`;
@@ -3125,7 +3136,9 @@ ${(() => {
     // =================== INIT ===================
     function initApp() {
       initPadronFilters();
+      // Siempre usar el PADRON más reciente con IDs reales de Supabase
       filteredPadron = [...PADRON];
+      currentPage = 1;
       renderInicio();
 
       // Close dropdown on click outside
