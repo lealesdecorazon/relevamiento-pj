@@ -3066,7 +3066,9 @@ ${(() => {
           );
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || 'Error al insertar lote ' + (i/LOTE + 1));
+            // Mostrar el error completo de Supabase para diagnóstico
+            const detalle = err.details || err.hint || err.code || '';
+            throw new Error((err.message || 'Error al insertar') + (detalle ? ' — ' + detalle : ''));
           }
           guardados += lote.length;
           const pct = 30 + Math.round((guardados / filas.length) * 65);
