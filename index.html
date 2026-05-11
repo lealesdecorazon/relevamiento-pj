@@ -2285,20 +2285,9 @@
     }
 
     // =================== MODAL ===================
-    async function openModal(id) {
-      // Buscar por id numérico; si no encuentra, buscar por id string
-      // (puede pasar si la tabla se renderizó antes de que Supabase devuelva los IDs reales)
-      // Normalizar: Supabase devuelve IDs numéricos, el HTML los puede pasar como string
-      const idNum = parseInt(id);
-      let a = PADRON.find(x => x.id === idNum || x.id === id);
-      if (!a) {
-        // Si no encuentra por ID, puede ser que la tabla esté desactualizada
-        // Recargar datos y volver a intentar
-        console.warn('openModal: ID', id, 'no encontrado. Recargando PADRON...');
-        await cargarDatos();
-        a = PADRON.find(x => x.id === idNum || x.id === id);
-        if (!a) { console.error('Afiliado no encontrado tras recarga'); return; }
-      }
+    function openModal(id) {
+      const a = PADRON.find(x => x.id === id);
+      if (!a) return;
       selectedAfiliadoId = id;
 
       document.getElementById('modalNombre').textContent = `${a.apellido}, ${a.nombre}`;
@@ -3098,10 +3087,29 @@ ${(() => {
           ' | Inválidos (sin DNI): ' + invalidos + '</small>' +
           '</div>';
 
-        setTimeout(async () => {
-          await cargarDatos();
+        // Usar importedData directamente en memoria.
+        // NO recargar desde Supabase — sus IDs son distintos a los del Excel
+        // y rompería la navegación del modal. Al recargar la página vendrán los IDs reales.
+        const mode2 = document.querySelector('input[name="importMode"]:checked').value;
+        if (mode2 === 'replace') {
+          PADRON = importedData;
+        } else {
+          const existingDNIs = new Set(PADRON.map(a => a.dni));
+          const maxId2 = Math.max(...PADRON.map(a => a.id), 0);
+          importedData.forEach((a, i) => {
+            if (!existingDNIs.has(a.dni)) {
+              a.id = maxId2 + i + 1;
+              PADRON.push(a);
+            }
+          });
+        }
+        filteredPadron = [...PADRON];
+        setTimeout(() => {
+          reinitPadronFilters();
           closeImportModal();
-        }, 1500);
+          showPage('padron');
+          renderInicio();
+        }, 800);
 
       } catch(error) {
         document.getElementById('importProgress').style.display = 'none';
