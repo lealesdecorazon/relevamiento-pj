@@ -3055,21 +3055,27 @@ ${(() => {
           ultimo_operador: a.ultimoOperador || '',
         }));
 
-        // Insertar en lotes de 500 para no superar el límite de Supabase
+        // Insertar en lotes de 500 y guardar los IDs reales que devuelve Supabase
         const LOTE = 500;
         let guardados = 0;
+        const registrosConIdReal = [];
+
         for (let i = 0; i < filas.length; i += LOTE) {
           const lote = filas.slice(i, i + LOTE);
-          const res  = await fetch(
+          // Pedir que Supabase devuelva los registros insertados con sus IDs reales
+          const headersConReturn = { ...sbHeaders, 'Prefer': 'return=representation' };
+          const res = await fetch(
             'https://pozdhwfwliajwcwkhprf.supabase.co/rest/v1/afiliados',
-            { method: 'POST', headers: sbHeaders, body: JSON.stringify(lote) }
+            { method: 'POST', headers: headersConReturn, body: JSON.stringify(lote) }
           );
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            // Mostrar el error completo de Supabase para diagnóstico
             const detalle = err.details || err.hint || err.code || '';
             throw new Error((err.message || 'Error al insertar') + (detalle ? ' — ' + detalle : ''));
           }
+          // Supabase devuelve los registros con sus IDs reales
+          const insertados = await res.json();
+          registrosConIdReal.push(...insertados);
           guardados += lote.length;
           const pct = 30 + Math.round((guardados / filas.length) * 65);
           document.getElementById('importProgressBar').style.width  = pct + '%';
@@ -3087,20 +3093,43 @@ ${(() => {
           ' | Inválidos (sin DNI): ' + invalidos + '</small>' +
           '</div>';
 
-        // Usar importedData directamente en memoria.
-        // NO recargar desde Supabase — sus IDs son distintos a los del Excel
-        // y rompería la navegación del modal. Al recargar la página vendrán los IDs reales.
+        // Armar el PADRON con los IDs REALES de Supabase
+        // Así al recargar la página los IDs van a coincidir siempre
+        const padronNuevo = registrosConIdReal.map(r => ({
+          id:             r.id,
+          apellido:       String(r.apellido       || '').trim(),
+          nombre:         String(r.nombre         || '').trim(),
+          dni:            String(r.dni             || '').trim(),
+          barrio:         String(r.barrio          || '').trim(),
+          circuito:       String(r.circuito        || '').trim(),
+          comuna:         String(r.comuna          || '').trim(),
+          domicilio:      String(r.domicilio       || '').trim(),
+          telefono:       String(r.telefono        || '').trim(),
+          nacimiento:     String(r.nacimiento      || '—').trim(),
+          genero:         String(r.genero          || '—').trim(),
+          profesion:      String(r.profesion       || '—').trim(),
+          afiliacion:     String(r.afiliacion      || '').trim(),
+          organizacion:   String(r.organizacion    || '').trim(),
+          observaciones:  String(r.observaciones   || '').trim(),
+          quiereCarnet:   String(r.quiere_carnet   || '').trim(),
+          operador:       String(r.operador        || '').trim(),
+          fechaCarga:     String(r.fecha_carga     || '').trim(),
+          tipoContacto:   String(r.tipo_contacto   || '').trim(),
+          pisoDpto:       String(r.piso_dpto       || '').trim(),
+          cp:             String(r.cp              || '').trim(),
+          ultimoContacto: String(r.ultimo_contacto || '').trim() || null,
+          ultimoTipo:     String(r.ultimo_tipo     || '').trim(),
+          ultimoOperador: String(r.ultimo_operador || '').trim(),
+          seguimientos:   []
+        }));
+
         const mode2 = document.querySelector('input[name="importMode"]:checked').value;
         if (mode2 === 'replace') {
-          PADRON = importedData;
+          PADRON = padronNuevo;
         } else {
           const existingDNIs = new Set(PADRON.map(a => a.dni));
-          const maxId2 = Math.max(...PADRON.map(a => a.id), 0);
-          importedData.forEach((a, i) => {
-            if (!existingDNIs.has(a.dni)) {
-              a.id = maxId2 + i + 1;
-              PADRON.push(a);
-            }
+          padronNuevo.forEach(a => {
+            if (!existingDNIs.has(a.dni)) PADRON.push(a);
           });
         }
         filteredPadron = [...PADRON];
