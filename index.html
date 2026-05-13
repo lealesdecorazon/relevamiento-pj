@@ -1639,6 +1639,12 @@
 
         // Cargar datos — el overlay cubre todo mientras esperamos
         await cargarDatos();
+
+        // Verificar que PADRON tenga datos antes de inicializar
+        console.log('Antes de initApp — PADRON:', PADRON.length, 'filteredPadron:', filteredPadron.length);
+        filteredPadron = [...PADRON];
+        currentPage = 1;
+        console.log('Después de asignar — filteredPadron:', filteredPadron.length);
         initApp();
 
       } catch(e) {
