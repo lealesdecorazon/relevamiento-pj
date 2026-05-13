@@ -1640,11 +1640,7 @@
         // Cargar datos — el overlay cubre todo mientras esperamos
         await cargarDatos();
 
-        // Verificar que PADRON tenga datos antes de inicializar
-        console.log('Antes de initApp — PADRON:', PADRON.length, 'filteredPadron:', filteredPadron.length);
-        filteredPadron = [...PADRON];
-        currentPage = 1;
-        console.log('Después de asignar — filteredPadron:', filteredPadron.length);
+        // PADRON ya está lleno — initApp() lo copia a filteredPadron
         initApp();
 
       } catch(e) {
@@ -1808,7 +1804,7 @@
     // =================== ESTADO ===================
     let currentPage = 1;
     const PAGE_SIZE = 50;
-    let filteredPadron = [...PADRON];
+    let filteredPadron = [];  // se llena en initApp() después de cargarDatos()
     let selectedAfiliadoId = null;
 
     // =================== NAVEGACION ===================
@@ -3200,9 +3196,9 @@ ${(() => {
     // =================== INIT ===================
     function initApp() {
       initPadronFilters();
-      // Siempre usar el PADRON más reciente con IDs reales de Supabase
       filteredPadron = [...PADRON];
       currentPage = 1;
+      console.log('initApp ejecutado — PADRON:', PADRON.length, '— filteredPadron:', filteredPadron.length);
       renderInicio();
 
       // Close dropdown on click outside
