@@ -1621,9 +1621,25 @@
         sbHeaders['Authorization'] = 'Bearer ' + currentUser.token;
 
         aplicarPermisosPorRol();
-        await cargarDatos();  // espera que PADRON esté lleno
-        ocultarLogin();       // muestra la app
-        initApp();            // renderiza con los datos ya cargados
+
+        // Ocultar login y mostrar overlay ANTES de hacer fetch
+        // Así el DOM no cancela las llamadas al remover elementos
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        if (!document.getElementById('loadingOverlay')) {
+          document.body.insertAdjacentHTML('afterbegin',
+            '<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;' +
+            'background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;' +
+            'align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;">' +
+            '<div style="font-size:2rem;margin-bottom:12px;">⭐</div>' +
+            '<div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div>' +
+            '<div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Conectando con Supabase...</div>' +
+            '</div>');
+        }
+
+        // Cargar datos — el overlay cubre todo mientras esperamos
+        await cargarDatos();
+        initApp();
 
       } catch(e) {
         errorEl.textContent = e.message;
