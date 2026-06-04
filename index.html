@@ -1040,44 +1040,6 @@
   </style>
 
 
-  <!-- ===================== LOGIN SCREEN ===================== -->
-  <div id="loginScreen" style="
-    display:flex; position:fixed; top:0; left:0; width:100%; height:100%;
-    background:linear-gradient(135deg,#0077B6 0%,#009BDF 100%);
-    align-items:center; justify-content:center; z-index:99999;
-    font-family:'Barlow',sans-serif;">
-    <div style="background:white;border-radius:16px;padding:40px 36px;width:100%;max-width:380px;
-                box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-      <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-size:2.5rem;margin-bottom:8px;">⭐</div>
-        <h2 style="margin:0;font-size:1.4rem;font-weight:700;color:#0077B6;">
-          Sistema de Relevamiento Territorial
-        </h2>
-        <p style="margin:8px 0 0;color:#64748B;font-size:0.9rem;">Ingresá con tu usuario</p>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:0.85rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Email</label>
-        <input id="loginEmail" type="email" placeholder="tu@email.com"
-          style="width:100%;padding:10px 12px;border:1.5px solid #D1D5DB;border-radius:8px;
-                 font-size:0.95rem;box-sizing:border-box;"
-          onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
-      </div>
-      <div style="margin-bottom:8px;">
-        <label style="font-size:0.85rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Contraseña</label>
-        <input id="loginPassword" type="password" placeholder="••••••••"
-          style="width:100%;padding:10px 12px;border:1.5px solid #D1D5DB;border-radius:8px;
-                 font-size:0.95rem;box-sizing:border-box;"
-          onkeydown="if(event.key==='Enter')login()">
-      </div>
-      <p id="loginError" style="color:#DC2626;font-size:0.85rem;min-height:20px;margin:4px 0 12px;"></p>
-      <button id="loginBtn" onclick="login()"
-        style="width:100%;padding:12px;background:#0077B6;color:white;border:none;
-               border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">
-        Ingresar
-      </button>
-    </div>
-  </div>
-
   <!-- NAV -->
   <nav class="topnav">
     <div class="nav-brand">
@@ -1092,16 +1054,6 @@
     </div>
     <button class="nav-mobile-toggle" onclick="toggleMobileNav()">☰</button>
   </nav>
-  <div id="userBar" style="display:flex;align-items:center;gap:12px;padding:6px 16px;
-              background:#EDF8FD;border-bottom:1px solid #BEE3F8;font-size:0.82rem;">
-    <span style="color:#0077B6;">👤</span>
-    <span id="userInfo" style="color:#374151;font-weight:500;flex:1;"></span>
-    <button onclick="logout()"
-      style="padding:4px 14px;background:#EF4444;color:white;border:none;
-             border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:600;">
-      Salir
-    </button>
-  </div>
 
   <!-- ===================== PAGE: INICIO ===================== -->
   <div class="app-page active" id="page-inicio">
@@ -1491,9 +1443,7 @@
       </div>
       <div class="modal-body">
         <div class="alert alert-info" style="margin-bottom:16px;">
-          <strong>Formato esperado:</strong> Las columnas deben ser: Sección, Circuito, Circuito Electoral, Apellido,
-          Nombre, Género, DNI, Fecha nacimiento, Fecha afiliación, Profesión, Domicilio, Piso - dpto, Código Postal,
-          Compañero/a que cargó, Fecha de carga, TIPO DE CONTACTO, ORGANIZACIÓN, QUIERE CARNET, TELEFONO, OBSERVACIONES
+          <strong>Formato esperado:</strong> Las columnas deben ser: COMUNA, BARRIO, CIRCUITO ELECTORAL, APELLIDO, NOMBRE, GÉNERO, DNI, FECHA DE NACIMIENTO,	FECHA AFILIACIÓN, PROFESIÓN, DOMICILIO, PISO y DPTO, CP, QUIÉN CARGÓ, FECHA DE CARGA, TIPO DE CONTACTO, ORGANIZACIÓN, QUIERE CARNET, TELÉFONO y OBSERVACIONES
         </div>
         <div
           style="border: 2px dashed var(--celeste); border-radius: var(--radius-sm); padding: 32px; text-align: center; margin-bottom: 16px; cursor:pointer;"
@@ -1559,252 +1509,91 @@
 
     let PADRON = [];
 
-    // ── CONFIGURACIÓN SUPABASE ──────────────────────────────────────────────
-    const SUPABASE_URL = 'https://pozdhwfwliajwcwkhprf.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_k-JYvlGFM9F8iomhEoFxiQ_tBkQVXK3';
+    // ── URL del Apps Script de Google Sheets ────────────────────────────
+    const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwJte0U085Z3ufBn-3qJoTON_Mj7EXEVUUa8gcNIMws5k68rLEJxWymO-IbgALnCPPs/exec';
 
-    // Headers globales — se actualizan con el token real al hacer login
-    window.sbHeaders = {
-      'apikey':        SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type':  'application/json',
-      'Prefer':        'return=representation'
-    };
-
-    // Usuario logueado — global para que sea accesible desde cualquier función
-    window.currentUser = null;
-
-    // ── LOGIN ────────────────────────────────────────────────────────────
-    function mostrarLogin() {
-      document.getElementById('appContainer').style.display = 'none';
-      document.getElementById('loginScreen').style.display  = 'flex';
-    }
-
-    function ocultarLogin() {
-      document.getElementById('loginScreen').style.display  = 'none';
-      document.getElementById('appContainer').style.display = 'block';
-    }
-
-    async function login() {
-      const email    = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      const errorEl  = document.getElementById('loginError');
-      const btn      = document.getElementById('loginBtn');
-
-      if (!email || !password) {
-        errorEl.textContent = 'Completá email y contraseña.';
-        return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = 'Ingresando...';
-      errorEl.textContent = '';
-
-      try {
-        const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-          method:  'POST',
-          headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error_description || data.msg || 'Error al ingresar');
-
-        // Guardar token y datos del usuario
-        currentUser = {
-          email:       data.user.email,
-          token:       data.access_token,
-          rol:         data.user.user_metadata?.rol || 'militante'
-        };
-
-        // Actualizar headers con el token personal del usuario
-        sbHeaders['Authorization'] = 'Bearer ' + currentUser.token;
-
-        aplicarPermisosPorRol();
-
-        // Ocultar login y mostrar overlay ANTES de hacer fetch
-        // Así el DOM no cancela las llamadas al remover elementos
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        if (!document.getElementById('loadingOverlay')) {
-          document.body.insertAdjacentHTML('afterbegin',
-            '<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;' +
-            'background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;' +
-            'align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;">' +
-            '<div style="font-size:2rem;margin-bottom:12px;">⭐</div>' +
-            '<div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div>' +
-            '<div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Conectando con Supabase...</div>' +
-            '</div>');
-        }
-
-        // Cargar datos — el overlay cubre todo mientras esperamos
-        await cargarDatos();
-
-        // PADRON ya está lleno — initApp() lo copia a filteredPadron
-        initApp();
-
-      } catch(e) {
-        errorEl.textContent = e.message;
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = 'Ingresar';
-      }
-    }
-
-    function logout() {
-      currentUser = null;
-      sbHeaders['Authorization'] = 'Bearer ' + SUPABASE_KEY;
-      mostrarLogin();
-    }
-
-    // ── PERMISOS POR ROL ─────────────────────────────────────────────────
-    // Roles disponibles:
-    //   'admin'       → puede todo: importar Excel, ver todo, gestionar usuarios
-    //   'coordinador' → ve el padrón completo, carga seguimientos
-    //   'militante'   → solo carga seguimientos
-    function aplicarPermisosPorRol() {
-      const rol = currentUser?.rol || 'militante';
-
-      // Mostrar nombre y rol en la interfaz
-      const userInfo = document.getElementById('userInfo');
-      if (userInfo) {
-        userInfo.textContent = currentUser.email + ' (' + rol + ')';
-      }
-
-      // Botón importar Excel: solo admins
-      const btnImport = document.getElementById('btnImportarExcel');
-      if (btnImport) btnImport.style.display = rol === 'admin' ? '' : 'none';
-
-      // Botón agregar afiliado: admins y coordinadores
-      const btnAgregar = document.getElementById('btnAgregarAfiliado');
-      if (btnAgregar) btnAgregar.style.display = (rol === 'admin' || rol === 'coordinador') ? '' : 'none';
-    }
-
-    // ── CARGAR DATOS DESDE SUPABASE ──────────────────────────────────────
+    // ── CARGAR DATOS DESDE GOOGLE SHEETS ────────────────────────────────
     async function cargarDatos() {
       try {
-        // Crear overlay solo si no existe ya uno
-        if (!document.getElementById('loadingOverlay')) {
-          document.body.insertAdjacentHTML('afterbegin',
-            '<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;' +
-            'background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;' +
-            'align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;">' +
-            '<div style="font-size:2rem;margin-bottom:12px;">⭐</div>' +
-            '<div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div>' +
-            '<div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Conectando con Supabase</div>' +
-            '</div>');
-        }
+        document.body.insertAdjacentHTML('afterbegin',
+          '<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;' +
+          'background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;' +
+          'align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;">' +
+          '<div style="font-size:2rem;margin-bottom:12px;">⭐</div>' +
+          '<div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div>' +
+          '<div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Leyendo Google Sheets...</div>' +
+          '</div>');
 
-        // Supabase devuelve hasta 1000 filas por pedido — paginamos si hay más
-        let todos = [];
-        let desde = 0;
-        const porPagina = 1000;
-        let hayMas = true;
+        const res  = await fetch(SHEETS_URL + '?action=leerPadron');
+        const json = await res.json();
 
-        while (hayMas) {
-          const url = SUPABASE_URL + '/rest/v1/afiliados?select=*&order=apellido.asc' +
-                      '&offset=' + desde + '&limit=' + porPagina;
-          const res  = await fetch(url, { headers: sbHeaders });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const data = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Error al leer la planilla');
 
-          const mapeados = data.map(r => ({
-            id:             r.id,
-            apellido:       String(r.apellido       || '').trim(),
-            nombre:         String(r.nombre         || '').trim(),
-            dni:            String(r.dni             || '').trim(),
-            barrio:         String(r.barrio          || '').trim(),
-            circuito:       String(r.circuito        || '').trim(),
-            comuna:         String(r.comuna          || '').trim(),
-            domicilio:      String(r.domicilio       || '').trim(),
-            telefono:       String(r.telefono        || '').trim(),
-            nacimiento:     String(r.nacimiento      || '—').trim(),
-            genero:         String(r.genero          || '—').trim(),
-            profesion:      String(r.profesion       || '—').trim(),
-            afiliacion:     String(r.afiliacion      || '').trim(),
-            organizacion:   String(r.organizacion    || '').trim(),
-            observaciones:  String(r.observaciones   || '').trim(),
-            quiereCarnet:   String(r.quiere_carnet   || '').trim(),
-            operador:       String(r.operador        || '').trim(),
-            fechaCarga:     String(r.fecha_carga     || '').trim(),
-            tipoContacto:   String(r.tipo_contacto   || '').trim(),
-            pisoDpto:       String(r.piso_dpto       || '').trim(),
-            cp:             String(r.cp              || '').trim(),
-            ultimoContacto: String(r.ultimo_contacto || '').trim() || null,
-            ultimoTipo:     String(r.ultimo_tipo     || '').trim(),
-            ultimoOperador: String(r.ultimo_operador || '').trim(),
-            seguimientos:   []
-          }));
-
-          todos = todos.concat(mapeados);
-          const loadMsg = document.getElementById('loadingMsg');
-          if (loadMsg) loadMsg.textContent = `Cargados ${todos.length} afiliados...`;
-
-          hayMas = data.length === porPagina;
-          desde += porPagina;
-        }
-
-        // Cargar seguimientos y asociarlos a cada afiliado
-        const resSeg = await fetch(
-          SUPABASE_URL + '/rest/v1/seguimientos?select=*&order=fecha.asc',
-          { headers: sbHeaders }
-        );
-        if (resSeg.ok) {
-          const segs = await resSeg.json();
-          const segPorAfiliado = {};
-          segs.forEach(s => {
-            if (!segPorAfiliado[s.afiliado_id]) segPorAfiliado[s.afiliado_id] = [];
-            segPorAfiliado[s.afiliado_id].push({
-              fecha:         s.fecha,
-              operador:      s.operador,
-              tipo:          s.tipo,
-              organizacion:  s.organizacion,
-              carnet:        s.carnet,
-              telefono:      s.telefono,
-              observaciones: s.observaciones
-            });
+        // Mapear cada fila de Sheets al modelo interno de la app
+        // Las claves son los encabezados exactos de la planilla
+        PADRON = json.data
+          .filter(r => r['DNI'] && String(r['DNI']).trim() !== '')
+          .map((r, i) => {
+            const norm = k => String(r[k] || '').trim();
+            return {
+              id:             i + 1,
+              apellido:       norm('APELLIDO'),
+              nombre:         norm('NOMBRE'),
+              dni:            norm('DNI'),
+              barrio:         norm('BARRIO'),
+              circuito:       norm('CIRCUITO_ELECTORAL'),
+              comuna:         norm('COMUNA'),
+              domicilio:      norm('DOMICILIO'),
+              telefono:       norm('TELÉFONO'),
+              nacimiento:     norm('FECHA_DE_NACIMIENTO')  || '—',
+              genero:         norm('GÉNERO')               || '—',
+              profesion:      norm('PROFESIÓN')            || '—',
+              afiliacion:     norm('FECHA_DE_AFILIACIÓN'),
+              organizacion:   norm('ORGANIZACIÓN'),
+              observaciones:  norm('OBSERVACIONES'),
+              quiereCarnet:   norm('QUIERE_CARNET'),
+              operador:       norm('QUIÉN_CARGÓ'),
+              fechaCarga:     norm('FECHA_DE_CARGA'),
+              tipoContacto:   norm('TIPO_DE_CONTACTO'),
+              pisoDpto:       norm('PISO_DPTO'),
+              cp:             norm('CP'),
+              ultimoContacto: norm('FECHA_DE_CARGA') || null,
+              ultimoTipo:     norm('TIPO_DE_CONTACTO'),
+              ultimoOperador: norm('QUIÉN_CARGÓ'),
+              seguimientos:   []
+            };
           });
-          todos.forEach(a => {
-            a.seguimientos = segPorAfiliado[a.id] || [];
-            if (a.seguimientos.length > 0) {
-              const ult = a.seguimientos[a.seguimientos.length - 1];
-              a.ultimoContacto = ult.fecha;
-              a.ultimoTipo     = ult.tipo;
-              a.ultimoOperador = ult.operador;
-            }
-          });
-        }
 
-        PADRON = todos;
-        console.log('cargarDatos completado. PADRON:', PADRON.length, 'registros');
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) overlay.remove();
-        // initApp se llama desde login() después de cargarDatos()
+        initApp();
 
       } catch(error) {
-        console.error('Error en cargarDatos:', error.message, error.stack);
+        console.error('Error Google Sheets:', error);
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) overlay.innerHTML =
           '<div style="text-align:center;padding:32px;">' +
           '<div style="font-size:2rem;margin-bottom:12px;">⚠️</div>' +
-          '<div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">No se pudo conectar con la base de datos</div>' +
+          '<div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">No se pudo conectar con Google Sheets</div>' +
           '<div style="font-size:0.85rem;opacity:0.85;margin-bottom:20px;">' + error.message + '</div>' +
+          '<button onclick="document.getElementById('loadingOverlay').remove();initApp();" ' +
+          'style="background:white;color:#0077B6;border:none;padding:10px 24px;border-radius:8px;font-weight:600;cursor:pointer;">Continuar sin datos</button>' +
           '</div>';
       }
     }
 
-    // Arranque: mostrar login primero
+    // Arranque
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', mostrarLogin);
+      document.addEventListener('DOMContentLoaded', cargarDatos);
     } else {
-      mostrarLogin();
+      cargarDatos();
     }
 
 
     // =================== ESTADO ===================
     let currentPage = 1;
     const PAGE_SIZE = 50;
-    let filteredPadron = [];  // se llena en initApp() después de cargarDatos()
+    let filteredPadron = [];
     let selectedAfiliadoId = null;
 
     // =================== NAVEGACION ===================
@@ -2364,12 +2153,10 @@
       if (!selectedAfiliadoId) return;
       const operador = document.getElementById('mOperador').value.trim();
       const tipo     = document.getElementById('mTipoContacto').value;
-
       if (!operador || !tipo) {
         alert('Por favor completá el nombre del compañero/a y el tipo de contacto.');
         return;
       }
-
       const a      = PADRON.find(x => x.id === selectedAfiliadoId);
       const tel    = document.getElementById('mTelefonoNew').value.trim();
       const org    = document.getElementById('mOrganizacion').value;
@@ -2377,42 +2164,37 @@
       const obs    = document.getElementById('mObservaciones').value.trim();
       const fecha  = fmtDate(new Date());
 
-      const seg = {
-        afiliado_id:   a.id,
-        fecha,
-        operador,
-        tipo,
-        organizacion:  org,
-        carnet,
-        telefono:      tel,
-        observaciones: obs
-      };
+      const seg = { fecha, operador, tipo, organizacion: org, carnet, telefono: tel, observaciones: obs };
 
+      // Guardar en Google Sheets
       try {
-        // Guardar en Supabase
-        const res = await fetch(
-          'https://pozdhwfwliajwcwkhprf.supabase.co/rest/v1/seguimientos',
-          { method: 'POST', headers: sbHeaders, body: JSON.stringify(seg) }
-        );
-        if (!res.ok) throw new Error('No se pudo guardar');
-
-        // Actualizar en memoria para refrescar la vista
-        const segLocal = { fecha, operador, tipo, organizacion: org, carnet, telefono: tel, observaciones: obs };
-        a.seguimientos.push(segLocal);
-        a.ultimoContacto = fecha;
-        a.ultimoTipo     = tipo;
-        a.ultimoOperador = operador;
-        if (org)    a.organizacion  = org;
-        if (carnet) a.quiereCarnet  = carnet;
-        if (tel)    a.telefono      = tel;
-
-        closeModal();
-        renderPadron();
-        if (document.getElementById('page-inicio').classList.contains('active')) renderInicio();
-
+        const res = await fetch(SHEETS_URL, {
+          method:  'POST',
+          body:    JSON.stringify({
+            action:      'guardarSeguimiento',
+            dni:         a.dni,
+            seguimiento: seg
+          })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Error al guardar');
       } catch(e) {
-        alert('Error al guardar el seguimiento: ' + e.message);
+        alert('Error al guardar en Google Sheets: ' + e.message);
+        return;
       }
+
+      // Actualizar en memoria para refrescar la vista sin recargar
+      a.seguimientos.push(seg);
+      a.ultimoContacto = fecha;
+      a.ultimoTipo     = tipo;
+      a.ultimoOperador = operador;
+      if (org)    a.organizacion  = org;
+      if (carnet) a.quiereCarnet  = carnet;
+      if (tel)    a.telefono      = tel;
+
+      closeModal();
+      renderPadron();
+      if (document.getElementById('page-inicio').classList.contains('active')) renderInicio();
     }
 
     // =================== MAPA CALOR ===================
@@ -3006,173 +2788,35 @@ ${(() => {
       document.getElementById('importResult').innerHTML = `<div class="alert" style="background:#FEE2E2;color:#991B1B;border-left:3px solid var(--danger);">❌ ${msg}</div>`;
     }
 
-    async function confirmImport() {
+    function confirmImport() {
       if (!importedData) return;
+      const mode = document.querySelector('input[name="importMode"]:checked').value;
 
-      // Solo admins pueden importar
-      if (!currentUser || currentUser.rol !== 'admin') {
-        document.getElementById('importResult').innerHTML =
-          '<div class="alert" style="background:#FEE2E2;color:#991B1B;border-left:3px solid #DC2626;">' +
-          '❌ Solo los administradores pueden importar el Excel.' +
-          '</div>';
-        return;
-      }
-
-      const mode    = document.querySelector('input[name="importMode"]:checked').value;
-      const btn     = document.getElementById('importConfirmBtn');
-      const resultEl = document.getElementById('importResult');
-
-      btn.disabled    = true;
-      btn.textContent = 'Guardando en Supabase...';
-      document.getElementById('importProgress').style.display    = 'block';
-      document.getElementById('importProgressText').textContent  = 'Preparando datos...';
-      document.getElementById('importProgressBar').style.width   = '10%';
-
-      try {
-        // Modo reemplazar: borrar todo primero
-        if (mode === 'replace') {
-          document.getElementById('importProgressText').textContent = 'Borrando datos anteriores...';
-          const delSeg = await fetch(
-            'https://pozdhwfwliajwcwkhprf.supabase.co/rest/v1/seguimientos?id=gte.0',
-            { method: 'DELETE', headers: sbHeaders }
-          );
-          const delAfi = await fetch(
-            'https://pozdhwfwliajwcwkhprf.supabase.co/rest/v1/afiliados?id=gte.0',
-            { method: 'DELETE', headers: sbHeaders }
-          );
-        }
-
-        document.getElementById('importProgressBar').style.width = '30%';
-
-        // Filtrar inválidos (sin DNI o sin apellido)
-        const validos = importedData.filter(a =>
-          a.dni && a.dni.trim() !== '' && a.dni !== '0' &&
-          a.apellido && a.apellido.trim() !== ''
-        );
-        const invalidos = importedData.length - validos.length;
-
-        // Mapear al formato exacto de las columnas de Supabase
-        const filas = validos.map(a => ({
-          apellido:        a.apellido       || '',
-          nombre:          a.nombre         || '',
-          dni:             a.dni            || '',
-          nacimiento:      a.nacimiento     || '',
-          genero:          a.genero         || '',
-          profesion:       a.profesion      || '',
-          domicilio:       a.domicilio      || '',
-          piso_dpto:       a.pisoDpto       || '',
-          cp:              a.cp             || '',
-          barrio:          a.barrio         || '',
-          comuna:          a.comuna         || '',
-          circuito:        a.circuito       || '',
-          telefono:        a.telefono       || '',
-          afiliacion:      a.afiliacion     || '',
-          organizacion:    a.organizacion   || '',
-          observaciones:   a.observaciones  || '',
-          quiere_carnet:   a.quiereCarnet   || '',
-          operador:        a.operador       || '',
-          fecha_carga:     a.fechaCarga     || '',
-          tipo_contacto:   a.tipoContacto   || '',
-          ultimo_contacto: a.ultimoContacto || '',
-          ultimo_tipo:     a.ultimoTipo     || '',
-          ultimo_operador: a.ultimoOperador || '',
-        }));
-
-        // Insertar en lotes de 500 y guardar los IDs reales que devuelve Supabase
-        const LOTE = 500;
-        let guardados = 0;
-        const registrosConIdReal = [];
-
-        for (let i = 0; i < filas.length; i += LOTE) {
-          const lote = filas.slice(i, i + LOTE);
-          // Pedir que Supabase devuelva los registros insertados con sus IDs reales
-          const headersConReturn = { ...sbHeaders, 'Prefer': 'return=representation' };
-          const res = await fetch(
-            'https://pozdhwfwliajwcwkhprf.supabase.co/rest/v1/afiliados',
-            { method: 'POST', headers: headersConReturn, body: JSON.stringify(lote) }
-          );
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            const detalle = err.details || err.hint || err.code || '';
-            throw new Error((err.message || 'Error al insertar') + (detalle ? ' — ' + detalle : ''));
+      if (mode === 'replace') {
+        PADRON = importedData;
+      } else {
+        const existingDNIs = new Set(PADRON.map(a => a.dni));
+        let added = 0;
+        const maxId = Math.max(...PADRON.map(a => a.id), 0);
+        importedData.forEach((a, i) => {
+          if (!existingDNIs.has(a.dni)) {
+            a.id = maxId + i + 1;
+            PADRON.push(a);
+            added++;
           }
-          // Supabase devuelve los registros con sus IDs reales
-          const insertados = await res.json();
-          registrosConIdReal.push(...insertados);
-          guardados += lote.length;
-          const pct = 30 + Math.round((guardados / filas.length) * 65);
-          document.getElementById('importProgressBar').style.width  = pct + '%';
-          document.getElementById('importProgressText').textContent =
-            `Guardando... ${guardados} de ${filas.length}`;
+        });
+        if (added === 0) {
+          document.getElementById('importResult').innerHTML = `<div class="alert" style="background:#FEF3C7;color:#92400E;border-left:3px solid var(--warning);">⚠️ No se agregaron nuevos afiliados: todos los DNIs ya existen en el padrón.</div>`;
+          return;
         }
-
-        document.getElementById('importProgressBar').style.width  = '100%';
-        document.getElementById('importProgress').style.display   = 'none';
-
-        resultEl.innerHTML =
-          '<div class="alert alert-success">' +
-          '✅ <strong>Importación completa</strong><br>' +
-          '<small>Guardados: ' + guardados +
-          ' | Inválidos (sin DNI): ' + invalidos + '</small>' +
-          '</div>';
-
-        // Armar el PADRON con los IDs REALES de Supabase
-        // Así al recargar la página los IDs van a coincidir siempre
-        const padronNuevo = registrosConIdReal.map(r => ({
-          id:             r.id,
-          apellido:       String(r.apellido       || '').trim(),
-          nombre:         String(r.nombre         || '').trim(),
-          dni:            String(r.dni             || '').trim(),
-          barrio:         String(r.barrio          || '').trim(),
-          circuito:       String(r.circuito        || '').trim(),
-          comuna:         String(r.comuna          || '').trim(),
-          domicilio:      String(r.domicilio       || '').trim(),
-          telefono:       String(r.telefono        || '').trim(),
-          nacimiento:     String(r.nacimiento      || '—').trim(),
-          genero:         String(r.genero          || '—').trim(),
-          profesion:      String(r.profesion       || '—').trim(),
-          afiliacion:     String(r.afiliacion      || '').trim(),
-          organizacion:   String(r.organizacion    || '').trim(),
-          observaciones:  String(r.observaciones   || '').trim(),
-          quiereCarnet:   String(r.quiere_carnet   || '').trim(),
-          operador:       String(r.operador        || '').trim(),
-          fechaCarga:     String(r.fecha_carga     || '').trim(),
-          tipoContacto:   String(r.tipo_contacto   || '').trim(),
-          pisoDpto:       String(r.piso_dpto       || '').trim(),
-          cp:             String(r.cp              || '').trim(),
-          ultimoContacto: String(r.ultimo_contacto || '').trim() || null,
-          ultimoTipo:     String(r.ultimo_tipo     || '').trim(),
-          ultimoOperador: String(r.ultimo_operador || '').trim(),
-          seguimientos:   []
-        }));
-
-        const mode2 = document.querySelector('input[name="importMode"]:checked').value;
-        if (mode2 === 'replace') {
-          PADRON = padronNuevo;
-        } else {
-          const existingDNIs = new Set(PADRON.map(a => a.dni));
-          padronNuevo.forEach(a => {
-            if (!existingDNIs.has(a.dni)) PADRON.push(a);
-          });
-        }
-        filteredPadron = [...PADRON];
-        setTimeout(() => {
-          reinitPadronFilters();
-          closeImportModal();
-          showPage('padron');
-          renderInicio();
-        }, 800);
-
-      } catch(error) {
-        document.getElementById('importProgress').style.display = 'none';
-        resultEl.innerHTML =
-          '<div class="alert" style="background:#FEE2E2;color:#991B1B;border-left:3px solid #DC2626;">' +
-          '❌ <strong>Error al guardar:</strong> ' + error.message +
-          '</div>';
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = '✅ Confirmar importación';
       }
+
+      filteredPadron = [...PADRON];
+      closeImportModal();
+      // Reinit filters
+      reinitPadronFilters();
+      showPage('padron');
+      renderInicio();
     }
 
     function reinitPadronFilters() {
@@ -3197,8 +2841,6 @@ ${(() => {
     function initApp() {
       initPadronFilters();
       filteredPadron = [...PADRON];
-      currentPage = 1;
-      console.log('initApp ejecutado — PADRON:', PADRON.length, '— filteredPadron:', filteredPadron.length);
       renderInicio();
 
       // Close dropdown on click outside
