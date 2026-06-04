@@ -1039,6 +1039,22 @@
     }
   </style>
 
+<div id="loginOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#0077b6; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:'Barlow', sans-serif; padding:20px; box-sizing:border-box;">
+  <div style="background:white; color:#333; padding:30px; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width:100%; max-width:360px; text-align:center;">
+    <!-- Logo del PJ -->
+    <img src="https://upload.wikimedia.org/wikipedia/commons/e/ea/Logotipo_del_Partido_Justicialista.png" alt="Escudo PJ" style="height: 60px; width: auto; margin-bottom: 15px;">
+    
+    <h3 style="margin:0 0 10px 0; color:#0077b6;">PJ CABA · Comuna 5</h3>
+    <p style="margin:0 0 20px 0; font-size:0.9rem; color:#666;">Ingresá la contraseña para acceder al sistema</p>
+    
+    <!-- Input y Botón -->
+    <input type="password" id="passInput" placeholder="Contraseña" style="width:100%; padding:10px; margin-bottom:15px; border:2px solid #ddd; border-radius:6px; box-sizing:border-box; font-size:1rem; outline:none;">
+    <button onclick="verificarPassword()" style="width:100%; background:#0077b6; color:white; border:none; padding:12px; border-radius:6px; font-size:1rem; font-weight:bold; cursor:pointer;">Ingresar</button>
+    
+    <!-- Mensaje de error oculto -->
+    <p id="loginError" style="color:#d90429; font-size:0.85rem; margin:10px 0 0 0; display:none;">⚠️ Contraseña incorrecta</p>
+  </div>
+</div>
 
   <!-- NAV -->
   <nav class="topnav">
@@ -1436,17 +1452,42 @@
   </div>
 
   <script>
-      (function() {
-          const passwordCorrecta = "comuna5pj";
-          let intento = "";
-          while (intento !== passwordCorrecta) {
-              intento = prompt("Por favor, ingresá la contraseña para acceder al sistema:");
-              if (intento === null) {
-                  document.body.innerHTML = '<h1 style="text-align:center; margin-top:50px; font-family:sans-serif;">Acceso denegado.</h1>';
-                  return;
-              }
-          }
-      })();
+
+document.body.style.overflow = 'hidden'; 
+
+function verificarPassword() {
+    const passwordCorrecta = "comuna5pj"; // <-- Tu contraseña aquí
+    const input = document.getElementById('passInput').value;
+    const errorMsg = document.getElementById('loginError');
+    const overlay = document.getElementById('loginOverlay');
+
+    if (input === passwordCorrecta) {
+        // Si es correcta, destruimos la pantalla de bloqueo y habilitamos el scroll
+        overlay.remove();
+        document.body.style.overflow = 'auto';
+        
+        // OPCIONAL: Si querés que cargue el padrón automáticamente al entrar, descomentá la línea de abajo:
+        // cargarDatos(); 
+    } else {
+        // Si es incorrecta, muestra el mensaje de error en rojo y limpia el input
+        errorMsg.style.display = 'block';
+        document.getElementById('passInput').value = '';
+        document.getElementById('passInput').focus();
+    }
+}
+
+// Extra: Permite que el usuario pueda dar "Enter" en el teclado para ingresar
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('passInput');
+    if(input) {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verificarPassword();
+            }
+        });
+    }
+});
+
 
     let PADRON = [];
 
