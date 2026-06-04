@@ -1,20 +1,4 @@
-  (function() {
-    const passwordCorrecta = "comuna5pj"; // <-- Acá poné la contraseña que quieras
-    let intento = "";
-    
-    // El bucle se repite hasta que pongan la contraseña correcta
-    while (intento !== passwordCorrecta) {
-        intento = prompt("Por favor, ingresá la contraseña para acceder al sistema:");
-        
-        // Si el usuario presiona "Cancelar", lo saca de la página
-        if (intento === null) {
-            document.body.innerHTML = '<h1 style="text-align:center; margin-top:50px; font-family:sans-serif;">Acceso denegado.</h1>';
-            return;
-        }
-    }
-})();
-
-<link
+  <link
     href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&amp;family=Barlow:wght@300;400;500;600&amp;display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1452,9 +1436,17 @@
   </div>
 
   <script>
-    // =================== CONEXIÓN WORDPRESS — API REST ===================
-    // Carga los afiliados desde el Custom Post Type 'afiliados' de WordPress.
-    // Los campos se leen desde el objeto `meta` de cada post.
+      (function() {
+          const passwordCorrecta = "comuna5pj";
+          let intento = "";
+          while (intento !== passwordCorrecta) {
+              intento = prompt("Por favor, ingresá la contraseña para acceder al sistema:");
+              if (intento === null) {
+                  document.body.innerHTML = '<h1 style="text-align:center; margin-top:50px; font-family:sans-serif;">Acceso denegado.</h1>';
+                  return;
+              }
+          }
+      })();
 
     let PADRON = [];
 
