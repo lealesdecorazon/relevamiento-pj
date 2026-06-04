@@ -1509,32 +1509,27 @@
 
     let PADRON = [];
 
-    // ── URL del Apps Script de Google Sheets ────────────────────────────
     const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwJte0U085Z3ufBn-3qJoTON_Mj7EXEVUUa8gcNIMws5k68rLEJxWymO-IbgALnCPPs/exec';
 
-    // ── CARGAR DATOS DESDE GOOGLE SHEETS ────────────────────────────────
     async function cargarDatos() {
-      try {
-        document.body.insertAdjacentHTML('afterbegin',
-          '<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;' +
-          'background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;' +
-          'align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;">' +
-          '<div style="font-size:2rem;margin-bottom:12px;">⭐</div>' +
-          '<div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div>' +
-          '<div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Leyendo Google Sheets...</div>' +
-          '</div>');
+      if (!document.getElementById('loadingOverlay')) {
+        const ol = document.createElement('div');
+        ol.id = 'loadingOverlay';
+        ol.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,119,182,0.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;font-family:Barlow,sans-serif;';
+        ol.innerHTML = '<div style="font-size:2rem;margin-bottom:12px;">&#11088;</div><div style="font-size:1.2rem;font-weight:600;">Cargando padrón...</div><div id="loadingMsg" style="font-size:0.85rem;margin-top:8px;opacity:0.8;">Leyendo Google Sheets...</div>';
+        document.body.prepend(ol);
+      }
 
+      try {
         const res  = await fetch(SHEETS_URL + '?action=leerPadron');
         const json = await res.json();
-
         if (!json.ok) throw new Error(json.error || 'Error al leer la planilla');
 
-        // Mapear cada fila de Sheets al modelo interno de la app
-        // Las claves son los encabezados exactos de la planilla
         PADRON = json.data
           .filter(r => r['DNI'] && String(r['DNI']).trim() !== '')
           .map((r, i) => {
             const norm = k => String(r[k] || '').trim();
+            const pick = (...keys) => { for (const k of keys) { const v = norm(k); if (v) return v; } return ''; };
             return {
               id:             i + 1,
               apellido:       norm('APELLIDO'),
@@ -1544,41 +1539,40 @@
               circuito:       norm('CIRCUITO_ELECTORAL'),
               comuna:         norm('COMUNA'),
               domicilio:      norm('DOMICILIO'),
-              telefono:       norm('TELÉFONO'),
-              nacimiento:     norm('FECHA_DE_NACIMIENTO')  || '—',
-              genero:         norm('GÉNERO')               || '—',
-              profesion:      norm('PROFESIÓN')            || '—',
-              afiliacion:     norm('FECHA_DE_AFILIACIÓN'),
-              organizacion:   norm('ORGANIZACIÓN'),
+              telefono:       pick('TELÉFONO', 'TELEFONO'),
+              nacimiento:     pick('FECHA_DE_NACIMIENTO') || '—',
+              genero:         pick('GÉNERO', 'GENERO') || '—',
+              profesion:      pick('PROFESIÓN', 'PROFESION') || '—',
+              afiliacion:     pick('FECHA_DE_AFILIACIÓN', 'FECHA_DE_AFILIACION'),
+              organizacion:   pick('ORGANIZACIÓN', 'ORGANIZACION'),
               observaciones:  norm('OBSERVACIONES'),
               quiereCarnet:   norm('QUIERE_CARNET'),
-              operador:       norm('QUIÉN_CARGÓ'),
+              operador:       pick('QUIÉN_CARGÓ', 'QUIEN_CARGO'),
               fechaCarga:     norm('FECHA_DE_CARGA'),
               tipoContacto:   norm('TIPO_DE_CONTACTO'),
               pisoDpto:       norm('PISO_DPTO'),
               cp:             norm('CP'),
               ultimoContacto: norm('FECHA_DE_CARGA') || null,
               ultimoTipo:     norm('TIPO_DE_CONTACTO'),
-              ultimoOperador: norm('QUIÉN_CARGÓ'),
+              ultimoOperador: pick('QUIÉN_CARGÓ', 'QUIEN_CARGO'),
               seguimientos:   []
             };
           });
 
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.remove();
+        const ol = document.getElementById('loadingOverlay');
+        if (ol) ol.remove();
         initApp();
 
       } catch(error) {
         console.error('Error Google Sheets:', error);
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.innerHTML =
-          '<div style="text-align:center;padding:32px;">' +
-          '<div style="font-size:2rem;margin-bottom:12px;">⚠️</div>' +
-          '<div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">No se pudo conectar con Google Sheets</div>' +
-          '<div style="font-size:0.85rem;opacity:0.85;margin-bottom:20px;">' + error.message + '</div>' +
-          '<button onclick="document.getElementById('loadingOverlay').remove();initApp();" ' +
-          'style="background:white;color:#0077B6;border:none;padding:10px 24px;border-radius:8px;font-weight:600;cursor:pointer;">Continuar sin datos</button>' +
-          '</div>';
+        const ol = document.getElementById('loadingOverlay');
+        if (ol) {
+          ol.innerHTML = '<div style="text-align:center;padding:32px;">' +
+            '<div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">Error al conectar con Google Sheets</div>' +
+            '<div style="font-size:0.85rem;margin-bottom:20px;">' + error.message + '</div>' +
+            '<button onclick="location.reload()" style="background:white;color:#0077B6;border:none;padding:10px 24px;border-radius:8px;font-weight:600;cursor:pointer;">Reintentar</button>' +
+            '</div>';
+        }
       }
     }
 
