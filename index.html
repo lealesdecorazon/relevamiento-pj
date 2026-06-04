@@ -1530,7 +1530,7 @@
           .map((r, i) => {
             const norm = k => String(r[k] || '').trim();
             const pick = (...keys) => { for (const k of keys) { const v = norm(k); if (v) return v; } return ''; };
-            return {
+            const obj = {
               id:             i + 1,
               apellido:       norm('APELLIDO'),
               nombre:         norm('NOMBRE'),
@@ -1557,6 +1557,22 @@
               ultimoOperador: pick('QUIÉN_CARGÓ', 'QUIEN_CARGO'),
               seguimientos:   []
             };
+            // Si la fila tiene tipo de contacto, armar el historial de seguimientos
+            if (obj.tipoContacto) {
+              obj.seguimientos = [{
+                fecha:         obj.fechaCarga    || '',
+                operador:      obj.operador      || '',
+                tipo:          obj.tipoContacto  || '',
+                organizacion:  obj.organizacion  || '',
+                carnet:        obj.quiereCarnet  || '',
+                telefono:      obj.telefono      || '',
+                observaciones: obj.observaciones || ''
+              }];
+              obj.ultimoContacto = obj.fechaCarga  || null;
+              obj.ultimoTipo     = obj.tipoContacto;
+              obj.ultimoOperador = obj.operador    || '';
+            }
+            return obj;
           });
 
         const ol = document.getElementById('loadingOverlay');
