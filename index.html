@@ -1509,6 +1509,14 @@
 
     let PADRON = [];
 
+    // Formatea una fecha como DD/MM/AAAA
+    function fmtDate(d) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yy = d.getFullYear();
+      return dd + '/' + mm + '/' + yy;
+    }
+
     const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwJte0U085Z3ufBn-3qJoTON_Mj7EXEVUUa8gcNIMws5k68rLEJxWymO-IbgALnCPPs/exec';
 
     async function cargarDatos() {
