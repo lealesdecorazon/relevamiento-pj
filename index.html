@@ -1207,9 +1207,6 @@
       <div class="filters-bar" id="padronFilters">
         <input class="filter-input" id="searchInput" placeholder="🔍 Apellido, nombre o DNI..."
           oninput="filterPadron()">
-        <select class="filter-select" id="filtComuna" onchange="filterPadron()">
-          <option value="">Todas las comunas</option>
-        </select>
         <select class="filter-select" id="filtBarrio" onchange="filterPadron()">
           <option value="">Todos los barrios</option>
         </select>
@@ -1362,7 +1359,6 @@
       <div class="modal-header">
         <div>
           <div class="modal-title" id="modalNombre">Nombre del Afiliado</div>
-          <div style="font-size:0.82rem; opacity:0.85;" id="modalSubtitle">DNI / Circuito</div>
         </div>
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
@@ -1380,8 +1376,9 @@
           </div>
           <div class="form-row" style="margin-top:8px;">
             <div><span class="form-label">Teléfono</span><br><span id="mTelefono">—</span></div>
-            <div><span class="form-label">Fecha de Afiliación</span><br><span id="mAfiliacion">—</span></div>
+            <div><span class="form-label">Fecha de Nacimiento</span><br><span id="mNacimiento">—</span></div>
           </div>
+          <div style="margin-top:8px;"><span class="form-label">Organización</span><br><span id="mOrgPadron">—</span></div>
         </div>
         <div class="modal-section">
           <div class="modal-section-title">📝 Historial de Seguimientos</div>
@@ -2042,10 +2039,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // =================== PADRON ===================
     function initPadronFilters() {
-      const comunas = [...new Set(PADRON.map(a => a.comuna))].sort((a, b) => parseInt(a) - parseInt(b));
-      const cEl = document.getElementById('filtComuna');
-      comunas.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = 'Comuna ' + c; cEl.appendChild(o); });
-
+ 
       const barrios = [...new Set(PADRON.map(a => a.barrio))].sort();
       const bEl = document.getElementById('filtBarrio');
       barrios.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; bEl.appendChild(o); });
@@ -2057,7 +2051,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function filterPadron() {
       const search = document.getElementById('searchInput').value.toLowerCase().trim();
-      const comuna = document.getElementById('filtComuna').value;
       const barrio = document.getElementById('filtBarrio').value;
       const circuito = document.getElementById('filtCircuito').value;
       const contacto = document.getElementById('filtContacto').value;
@@ -2067,7 +2060,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const fullName = (a.apellido + ' ' + a.nombre).toLowerCase();
           if (!fullName.includes(search) && !a.dni.includes(search)) return false;
         }
-        if (comuna && a.comuna !== comuna) return false;
         if (barrio && a.barrio !== barrio) return false;
         if (circuito && a.circuito !== circuito) return false;
         if (contacto === 'sin_contacto' && a.seguimientos.length > 0) return false;
@@ -2082,7 +2074,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function clearFilters() {
       document.getElementById('searchInput').value = '';
-      document.getElementById('filtComuna').value = '';
       document.getElementById('filtBarrio').value = '';
       document.getElementById('filtCircuito').value = '';
       document.getElementById('filtContacto').value = '';
@@ -2167,14 +2158,14 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedAfiliadoId = id;
 
       document.getElementById('modalNombre').textContent = `${a.apellido}, ${a.nombre}`;
-      document.getElementById('modalSubtitle').textContent = `DNI: ${a.dni} · Circuito: ${a.circuito}`;
       document.getElementById('mDNI').textContent = a.dni;
       document.getElementById('mProfesion').textContent = a.profesion || '—';
       document.getElementById('mDomicilio').textContent = a.domicilio;
       document.getElementById('mBarrio').textContent = a.barrio;
       document.getElementById('mCircuito').textContent = `${a.circuito} — Comuna ${a.comuna}`;
       document.getElementById('mTelefono').textContent = a.telefono || '—';
-      document.getElementById('mAfiliacion').textContent = a.afiliacion || '—';
+      document.getElementById('mNacimiento').textContent = a.nacimiento || '—';
+      document.getElementById('mOrgPadron').textContent = a.organizacion || '—';
 
       // Historial
       const hist = a.seguimientos;
