@@ -1219,12 +1219,11 @@
         <select class="filter-select" id="filtContacto" onchange="filterPadron()">
           <option value="">Todos los contactos</option>
           <option value="sin_contacto">Sin contacto</option>
-          <option value="NO RESPONDIO PERO DEJAMOS CARTA/CONTACTO">No respondió</option>
+          <option value="NO RESPONDIÓ PERO DEJAMOS LA CARTA">No respondió</option>
           <option value="PUDIMOS CONTACTAR (MALA RECEPCIÓN)">Mala recepción</option>
           <option value="PUDIMOS CONTACTAR (BUENA RECEPCIÓN)">Buena recepción</option>
           <option value="NO VIVE MÁS ACÁ">No vive más acá</option>
           <option value="ENTREGAMOS CARNET">Entregamos carnet</option>
-          <option value="VISITAMOS PERO NO HABIA NADIE">No había nadie</option>
         </select>
         <button class="btn btn-secondary btn-sm" onclick="clearFilters()">✕ Limpiar</button>
       </div>
@@ -1826,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'VISITAMOS PERO NO HABIA NADIE': '#8B5CF6'
       };
       const tipoLabelShort = {
-        'NO RESPONDIO PERO DEJAMOS CARTA/CONTACTO': 'No respondió',
+        'NO RESPONDIÓ PERO DEJAMOS LA CARTA': 'No respondió',
         'PUDIMOS CONTACTAR (MALA RECEPCIÓN)': 'Mala recepción',
         'PUDIMOS CONTACTAR (BUENA RECEPCIÓN)': 'Buena recepción',
         'NO VIVE MÁS ACÁ': 'No vive acá',
@@ -2102,14 +2101,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('padronInfo').textContent = `Mostrando ${start + 1}–${end} de ${total} afiliados`;
 
       const tipoBadge = {
-        'NO RESPONDIO PERO DEJAMOS CARTA/CONTACTO': 'badge-yellow',
+        'NO RESPONDIÓ PERO DEJAMOS LA CARTA': 'badge-yellow',
         'PUDIMOS CONTACTAR (MALA RECEPCIÓN)': 'badge-red',
         'PUDIMOS CONTACTAR (BUENA RECEPCIÓN)': 'badge-green',
         'NO VIVE MÁS ACÁ': 'badge-gray',
         'ENTREGAMOS CARNET': 'badge-blue'
       };
       const tipoShort = {
-        'NO RESPONDIO PERO DEJAMOS CARTA/CONTACTO': 'No respondió',
+        'NO RESPONDIÓ PERO DEJAMOS LA CARTA': 'No respondió',
         'PUDIMOS CONTACTAR (MALA RECEPCIÓN)': 'Mala rec.',
         'PUDIMOS CONTACTAR (BUENA RECEPCIÓN)': 'Buena rec.',
         'NO VIVE MÁS ACÁ': 'No vive acá',
