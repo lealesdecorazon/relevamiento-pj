@@ -2360,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
     }
 
-    // =================== CARGA RAPIDA ===================
+// =================== CARGA RAPIDA ===================
     let cargaSelectedId = null;
 
     function searchForCarga() {
@@ -2376,11 +2376,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (results.length === 0) { drop.style.display = 'none'; return; }
 
       drop.innerHTML = results.map(a => `
-    <div class="search-result-item" onclick="selectCargaAfiliado(${a.id})">
-      <div class="name">${a.apellido}, ${a.nombre}</div>
-      <div class="meta">DNI: ${a.dni} · ${a.barrio} · Circ. ${a.circuito}</div>
-    </div>
-  `).join('');
+        <div class="search-result-item" onclick="selectCargaAfiliado(${a.id})">
+          <div class="name">${a.apellido}, ${a.nombre}</div>
+          <div class="meta">DNI: ${a.dni} · ${a.barrio} · Circ. ${a.circuito}</div>
+        </div>
+      `).join('');
       drop.style.display = 'block';
     }
 
@@ -2406,17 +2406,21 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cargaAlert').innerHTML = '';
     }
 
-    function guardarCarga() {
+    async function guardarCarga() {
       if (!cargaSelectedId) return;
       const operador = document.getElementById('cargaOperador').value.trim();
       const tipo = document.getElementById('cargaTipoContacto').value;
+      
       if (!operador || !tipo) {
         document.getElementById('cargaAlert').innerHTML = '<div class="alert" style="background:#FEE2E2;color:#991B1B;border-left:3px solid var(--danger)">Por favor completá el nombre y el tipo de contacto.</div>';
         return;
       }
+      
       const a = PADRON.find(x => x.id === cargaSelectedId);
+      const fecha = fmtDate(new Date());
+      
       const seg = {
-        fecha: fmtDate(new Date()),
+        fecha: fecha,
         operador,
         tipo,
         organizacion: document.getElementById('cargaOrganizacion').value,
@@ -2424,21 +2428,55 @@ document.addEventListener('DOMContentLoaded', () => {
         telefono: document.getElementById('cargaTelefono').value.trim(),
         observaciones: document.getElementById('cargaObservaciones').value.trim()
       };
+
+      // Cartel de espera para avisar al operador que se está conectando al Excel
+      document.getElementById('cargaAlert').innerHTML = '<div class="alert alert-info">⏳ Sincronizando con Google Sheets...</div>';
+
+      // --- CONEXIÓN REAL CON TU BASE DE DATOS ---
+      try {
+        const res = await fetch(SHEETS_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'guardarSeguimiento',
+            dni: a.dni,
+            seguimiento: seg
+          })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Error al guardar');
+      } catch(e) {
+        document.getElementById('cargaAlert').innerHTML = '<div class="alert" style="background:#FEE2E2;color:#991B1B;border-left:3px solid var(--danger)">❌ Error al guardar en Google Sheets: ' + e.message + '</div>';
+        return; // Frena acá para que el usuario pueda intentar guardar de nuevo
+      }
+
+      // Actualizar los datos locales en la memoria de la web
       a.seguimientos.push(seg);
-      a.ultimoContacto = seg.fecha;
+      a.ultimoContacto = fecha;
       a.ultimoTipo = tipo;
+      a.ultimoOperador = operador;
       if (seg.organizacion) a.organizacion = seg.organizacion;
       if (seg.carnet) a.quiereCarnet = seg.carnet;
       if (seg.telefono) a.telefono = seg.telefono;
 
-      document.getElementById('cargaAlert').innerHTML = '<div class="alert alert-success">✅ Seguimiento guardado correctamente.</div>';
-      // Reset form
+      // Cartel final de éxito rotundo
+      document.getElementById('cargaAlert').innerHTML = '<div class="alert alert-success">✅ Seguimiento guardado correctamente en el Excel.</div>';
+      
+      // Resetear los campos del formulario
       ['cargaOperador', 'cargaTelefono', 'cargaObservaciones'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('cargaTipoContacto').value = '';
       document.getElementById('cargaOrganizacion').value = '';
       document.getElementById('cargaCarnet').value = '';
+      
+      // Forzar el refresco de las tablas de las otras pestañas para que aparezca lo nuevo
+      if (typeof renderPadron === 'function') renderPadron();
+      if (document.getElementById('page-inicio') && document.getElementById('page-inicio').classList.contains('active')) {
+        if (typeof renderInicio === 'function') renderInicio();
+      }
+
+      // Cierra la carga rápida automáticamente después de 2 segundos
       setTimeout(() => { cancelarCarga(); }, 2000);
     }
+
 
     // =================== AGREGAR AFILIADO ===================
     function openAddAfiliado() {
