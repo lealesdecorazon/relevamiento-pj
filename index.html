@@ -1138,7 +1138,7 @@
     <!-- HERO CON STATS -->
     <div class="hero">
       <div class="hero-title">Sistema de Relevamiento Territorial</div>
-      <div class="hero-sub">Partido Justicialista · CABA — Barrios: Almagro y Boedo</div>
+      <div class="hero-sub">Partido Justicialista · Comuna 5</div>
       <div class="stats-grid" id="heroStats"></div>
     </div>
 
@@ -1688,39 +1688,119 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // ---- GRAFICO 2: Barras por organización (solo los que tienen org) ----
+      // ---- GRAFICO 2: Barras apiladas por organización ----
       destroyChart('chartOrgBarras');
       const ctxOrg = document.getElementById('chartOrgBarras').getContext('2d');
-      const orgEntries = Object.entries(s.byOrg).sort((a, b) => b[1] - a[1]);
-      const orgColors = ['#009BDF', '#0077B6', '#5BC4F5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+      // Subcategorías con sus colores dentro de cada grupo
+      const SUBCATS_CAMPORA = [
+        { nombre: 'La Cámpora',            color: '#0077B6' },
+        { nombre: 'La Cámpora - Adherente', color: '#009BDF' },
+        { nombre: 'Certificador UC',        color: '#5BC4F5' },
+        { nombre: 'Aliados',               color: '#A8DAFC' },
+      ];
+      const SUBCATS_NEP = [
+        { nombre: 'NEP',             color: '#059669' },
+        { nombre: 'Certificador NEP', color: '#6EE7B7' },
+      ];
+
+      // Contar por subcategoría y por "otros"
+      const cntSubCampora = {};
+      const cntSubNEP     = {};
+      const cntOtros      = {};
+
+      SUBCATS_CAMPORA.forEach(s => cntSubCampora[s.nombre] = 0);
+      SUBCATS_NEP.forEach(s => cntSubNEP[s.nombre] = 0);
+
+      PADRON.forEach(a => {
+        const org = (a.organizacion || '').trim();
+        if (!org) return;
+        if (org in cntSubCampora)     cntSubCampora[org]++;
+        else if (org in cntSubNEP)    cntSubNEP[org]++;
+        else                          cntOtros[org] = (cntOtros[org] || 0) + 1;
+      });
+
+      // Etiquetas del eje X: grupos primero, luego otros ordenados por cantidad
+      const otrosEntries = Object.entries(cntOtros).sort((a, b) => b[1] - a[1]);
+      const barLabels = ['La Cámpora + Aliados', 'NEP', ...otrosEntries.map(([k]) => k)];
+      const nBars     = barLabels.length;
+      const fallbackColors = ['#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B', '#EC4899'];
+
+      // Construir datasets: cada subcategoría es un dataset
+      // Para las barras "otros" cada dataset solo tiene valor en su columna
+      const datasets = [];
+
+      // Subcategorías de La Cámpora (columna 0)
+      SUBCATS_CAMPORA.forEach(sub => {
+        const data = new Array(nBars).fill(null);
+        data[0] = cntSubCampora[sub.nombre] || 0;
+        datasets.push({
+          label:           sub.nombre,
+          data,
+          backgroundColor: sub.color + 'CC',
+          borderColor:     sub.color,
+          borderWidth:     2,
+          borderSkipped:   false,
+        });
+      });
+
+      // Subcategorías de NEP (columna 1)
+      SUBCATS_NEP.forEach(sub => {
+        const data = new Array(nBars).fill(null);
+        data[1] = cntSubNEP[sub.nombre] || 0;
+        datasets.push({
+          label:           sub.nombre,
+          data,
+          backgroundColor: sub.color + 'CC',
+          borderColor:     sub.color,
+          borderWidth:     2,
+          borderSkipped:   false,
+        });
+      });
+
+      // Barras individuales para "otros" (columnas 2+)
+      otrosEntries.forEach(([org, cnt], i) => {
+        const data = new Array(nBars).fill(null);
+        data[i + 2] = cnt;
+        const color = fallbackColors[i % fallbackColors.length];
+        datasets.push({
+          label:           org,
+          data,
+          backgroundColor: color + 'CC',
+          borderColor:     color,
+          borderWidth:     2,
+          borderRadius:    6,
+          borderSkipped:   false,
+        });
+      });
+
+      const orgTotal = PADRON.filter(a => a.organizacion).length;
+
       _charts['chartOrgBarras'] = new Chart(ctxOrg, {
         type: 'bar',
-        data: {
-          labels: orgEntries.map(([k]) => k),
-          datasets: [{
-            label: 'Afiliados',
-            data: orgEntries.map(([, v]) => v),
-            backgroundColor: orgEntries.map((_, i) => orgColors[i % orgColors.length] + 'CC'),
-            borderColor: orgEntries.map((_, i) => orgColors[i % orgColors.length]),
-            borderWidth: 2,
-            borderRadius: 6,
-            borderSkipped: false
-          }]
-        },
+        data: { labels: barLabels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: { font: { family: 'Barlow', size: 10 }, padding: 8, boxWidth: 12 }
+            },
             tooltip: {
               callbacks: {
-                label: ctx => ` ${ctx.parsed.y.toLocaleString('es-AR')} afiliados`
+                label: ctx => {
+                  if (!ctx.parsed.y) return null;
+                  const pct = orgTotal > 0 ? Math.round(ctx.parsed.y / orgTotal * 100) : 0;
+                  return ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('es-AR')} (${pct}%)`;
+                }
               }
             }
           },
           scales: {
-            y: { beginAtZero: true, ticks: { font: { family: 'Barlow', size: 11 } }, grid: { color: '#F0F4F8' } },
-            x: { ticks: { font: { family: 'Barlow', size: 12, weight: '600' } }, grid: { display: false } }
+            x: { stacked: true, grid: { display: false }, ticks: { font: { family: 'Barlow', size: 11, weight: '600' }, maxRotation: 30 } },
+            y: { stacked: true, beginAtZero: true, ticks: { font: { family: 'Barlow', size: 11 } }, grid: { color: '#F0F4F8' } }
           }
         }
       });
