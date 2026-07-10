@@ -1239,8 +1239,6 @@
   </div>
 
 
-
-  <!-- ===================== PAGE: CARGA ===================== -->
   <!-- ===================== PAGE: EXPORTAR ===================== -->
   <div class="app-page" id="page-exportar">
     <div class="card">
@@ -2248,116 +2246,139 @@ document.addEventListener('DOMContentLoaded', () => {
       if (document.getElementById('page-inicio').classList.contains('active')) renderInicio();
     }
 
-    // =================== MAPA CALOR ===================
-    // Circuitos de CABA aproximados como polígonos simplificados por zona/comuna
-    // Usando representación visual simplificada (no geo exacto)
-    const CIRCUITOS_MAPA = [
-      // [id_circuito, x_centro, y_centro, label, comunas_asociadas]
-      // Representamos 15 comunas como zonas coloreadas
-      { id: 'C1', label: 'Com.1', x: 430, y: 520, w: 70, h: 50, comunas: ['1'] },
-      { id: 'C2', label: 'Com.2', x: 440, y: 440, w: 60, h: 60, comunas: ['2'] },
-      { id: 'C3', label: 'Com.3', x: 350, y: 490, w: 70, h: 60, comunas: ['3'] },
-      { id: 'C4', label: 'Com.4', x: 390, y: 590, w: 80, h: 60, comunas: ['4'] },
-      { id: 'C5', label: 'Com.5', x: 310, y: 480, w: 60, h: 60, comunas: ['5'] },
-      { id: 'C6', label: 'Com.6', x: 270, y: 440, w: 70, h: 70, comunas: ['6'] },
-      { id: 'C7', label: 'Com.7', x: 220, y: 500, w: 80, h: 60, comunas: ['7'] },
-      { id: 'C8', label: 'Com.8', x: 200, y: 590, w: 90, h: 70, comunas: ['8'] },
-      { id: 'C9', label: 'Com.9', x: 130, y: 510, w: 90, h: 80, comunas: ['9'] },
-      { id: 'C10', label: 'Com.10', x: 170, y: 420, w: 80, h: 70, comunas: ['10'] },
-      { id: 'C11', label: 'Com.11', x: 210, y: 340, w: 80, h: 70, comunas: ['11'] },
-      { id: 'C12', label: 'Com.12', x: 270, y: 270, w: 80, h: 70, comunas: ['12'] },
-      { id: 'C13', label: 'Com.13', x: 370, y: 290, w: 80, h: 70, comunas: ['13'] },
-      { id: 'C14', label: 'Com.14', x: 320, y: 370, w: 80, h: 80, comunas: ['14'] },
-      { id: 'C15', label: 'Com.15', x: 230, y: 400, w: 70, h: 60, comunas: ['15'] },
-    ];
-
-    function getColorIntensity(val, max) {
-      if (max === 0) return '#EDF8FD';
-      const ratio = val / max;
-      const r = Math.round(0 + ratio * 0);
-      const g = Math.round(155 + ratio * (119 - 155));
-      const b = Math.round(223 + ratio * (182 - 223));
-      const alpha = 0.15 + ratio * 0.85;
-      return `rgba(0,${g},${b},${alpha})`;
-    }
-
-    function renderMapa() {
-      const variable = document.getElementById('mapaVariable').value;
-      const svg = document.getElementById('mapa-calor-svg');
-
-      // Get data per comuna
-      const dataPerComuna = {};
-      for (let c = 1; c <= 15; c++) {
-        const cStr = String(c);
-        const afs = PADRON.filter(a => a.comuna === cStr);
-        let val = 0;
-        if (variable === 'contacto') val = afs.filter(a => a.seguimientos.length > 0).length;
-        else if (variable === 'afiliados') val = afs.length;
-        else if (variable === 'buena') val = afs.filter(a => a.seguimientos.some(s => s.tipo === 'PUDIMOS CONTACTAR (BUENA RECEPCIÓN)')).length;
-        else if (variable === 'carnet') val = afs.filter(a => a.seguimientos.some(s => s.tipo === 'ENTREGAMOS CARNET')).length;
-        dataPerComuna[cStr] = { val, total: afs.length };
-      }
-      const maxVal = Math.max(...Object.values(dataPerComuna).map(d => d.val));
-
-      // Build SVG
-      let svgContent = `
-    <!-- CABA outline simplified -->
-    <defs>
-      <filter id="shadow">
-        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
-      </filter>
-    </defs>
-    <!-- Title -->
-    <text x="400" y="35" text-anchor="middle" font-family="Barlow Condensed" font-size="18" font-weight="700" fill="#0077B6">CIUDAD AUTÓNOMA DE BUENOS AIRES</text>
-    <text x="400" y="55" text-anchor="middle" font-family="Barlow" font-size="12" fill="#94A3B8">Mapa de calor por commune — ${document.getElementById('mapaVariable').options[document.getElementById('mapaVariable').selectedIndex].text}</text>
-    <!-- Rio de la plata -->
-    <rect x="490" y="200" width="200" height="400" rx="8" fill="rgba(0,155,223,0.08)" stroke="rgba(0,155,223,0.15)" stroke-width="1"/>
-    <text x="590" y="430" text-anchor="middle" font-family="Barlow" font-size="11" fill="rgba(0,155,223,0.4)" transform="rotate(-30,590,430)">RÍO DE LA PLATA</text>
-  `;
-
-      // Draw communes
-      CIRCUITOS_MAPA.forEach(z => {
-        const cId = z.comunas[0];
-        const d = dataPerComuna[cId] || { val: 0, total: 0 };
-        const color = getColorIntensity(d.val, maxVal);
-        const pct = d.total > 0 ? Math.round(d.val / d.total * 100) : 0;
-
-        svgContent += `
-      <g filter="url(#shadow)" style="cursor:pointer;" onclick="filterAndGoToPadron('')">
-        <rect x="${z.x - z.w / 2}" y="${z.y - z.h / 2}" width="${z.w}" height="${z.h}" rx="6"
-          fill="${color}" stroke="rgba(0,119,182,0.4)" stroke-width="1.5"/>
-        <text x="${z.x}" y="${z.y - 6}" text-anchor="middle" font-family="Barlow Condensed" font-size="11" font-weight="700" fill="#0077B6">${z.label}</text>
-        <text x="${z.x}" y="${z.y + 8}" text-anchor="middle" font-family="Barlow" font-size="10" fill="#334155">${d.val}/${d.total}</text>
-        <text x="${z.x}" y="${z.y + 20}" text-anchor="middle" font-family="Barlow Condensed" font-size="11" font-weight="700" fill="${pct > 70 ? '#065F46' : pct > 40 ? '#0077B6' : '#92400E'}">${pct}%</text>
-      </g>`;
-      });
-
-      // Scale bar
-      svgContent += `
-    <text x="50" y="640" font-family="Barlow" font-size="10" fill="#94A3B8">0%</text>
-    <text x="250" y="640" font-family="Barlow" font-size="10" fill="#94A3B8">100%</text>
-    <defs>
-      <linearGradient id="scaleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" style="stop-color:rgba(0,155,223,0.15)"/>
-        <stop offset="100%" style="stop-color:rgba(0,119,182,1)"/>
-      </linearGradient>
-    </defs>
-    <rect x="60" y="630" width="180" height="8" rx="4" fill="url(#scaleGrad)"/>
-  `;
-
-      svg.innerHTML = svgContent;
-
-      // Leyenda
-      document.getElementById('mapaLeyenda').innerHTML = `
-    <div class="leyenda-item"><div class="leyenda-box" style="background:rgba(0,155,223,0.15); border:1px solid rgba(0,119,182,0.3);"></div> 0–30%</div>
-    <div class="leyenda-item"><div class="leyenda-box" style="background:rgba(0,155,223,0.45);"></div> 30–60%</div>
-    <div class="leyenda-item"><div class="leyenda-box" style="background:rgba(0,119,182,0.75);"></div> 60–80%</div>
-    <div class="leyenda-item"><div class="leyenda-box" style="background:rgba(0,119,182,1);"></div> 80–100%</div>
-  `;
-    }
+   
 
 // =================== CARGA RAPIDA ===================
     let cargaSelectedId = null;
+
+// ── EXPORTAR XLSX ────────────────────────────────────────────────────
+    function exportarPadronXLSX() {
+      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+
+      // Filas del padrón
+      const rowsPadron = PADRON.map(a => ({
+        'COMUNA':            a.comuna,
+        'BARRIO':            a.barrio,
+        'CIRCUITO':          a.circuito,
+        'APELLIDO':          a.apellido,
+        'NOMBRE':            a.nombre,
+        'DNI':               a.dni,
+        'GÉNERO':            a.genero,
+        'FECHA_NACIMIENTO':  a.nacimiento,
+        'FECHA_AFILIACION':  a.afiliacion,
+        'DOMICILIO':         a.domicilio,
+        'TELÉFONO':          a.telefono,
+        'ORGANIZACIÓN':      a.organizacion,
+        'QUIERE_CARNET':     a.quiereCarnet,
+        'FECHA_DE_CONTACTO':   a.ultimoContacto || '',
+        'TIPO_DE_TIPO':       a.ultimoTipo || '',
+        'QUIEN_CARGO':   a.ultimoOperador || '',
+        'OBSERVACIONES':   a.observaciones
+      }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsPadron), 'Padrón');
+      
+      XLSX.writeFile(wb, 'padron_relevamiento.xlsx');
+    }
+
+    // ── EXPORTAR PDF ─────────────────────────────────────────────────────
+    function exportarEstadisticasPDF() {
+      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+
+      const total       = PADRON.length;
+      const contactados = PADRON.filter(a => a.ultimoTipo).length;
+      const conCarnet   = PADRON.filter(a => (a.quiereCarnet || '').toUpperCase() === 'SI').length;
+      const pctContacto = total > 0 ? Math.round(contactados / total * 100) : 0;
+
+      // Contar por tipo de contacto
+      const porTipo = {};
+      PADRON.forEach(a => {
+        if (a.ultimoTipo) porTipo[a.ultimoTipo] = (porTipo[a.ultimoTipo] || 0) + 1;
+      });
+
+      // Contar por barrio
+      const porBarrio = {};
+      PADRON.forEach(a => {
+        if (a.barrio) porBarrio[a.barrio] = (porBarrio[a.barrio] || 0) + 1;
+      });
+      const topBarrios = Object.entries(porBarrio).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+      // Contar por organización
+      const porOrg = {};
+      PADRON.forEach(a => {
+        if (a.organizacion) porOrg[a.organizacion] = (porOrg[a.organizacion] || 0) + 1;
+      });
+      const topOrgs = Object.entries(porOrg).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+      const fecha = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+      const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte de Relevamiento Territorial</title>
+<style>
+  body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; font-size: 13px; }
+  h1 { color: #0077B6; font-size: 20px; margin-bottom: 4px; }
+  h2 { color: #0077B6; font-size: 15px; border-bottom: 2px solid #009BDF; padding-bottom: 4px; margin-top: 24px; }
+  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+  .stats { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+  .stat { background: #EDF8FD; border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 120px; text-align: center; }
+  .stat .num { font-size: 28px; font-weight: 700; color: #0077B6; }
+  .stat .lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th { background: #0077B6; color: white; padding: 7px 10px; text-align: left; font-size: 12px; }
+  td { padding: 6px 10px; border-bottom: 1px solid #E2E8F0; font-size: 12px; }
+  tr:nth-child(even) td { background: #F8FAFC; }
+  .footer { margin-top: 32px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 8px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<h1>⭐ Reporte de Relevamiento Territorial — PJ CABA · Comuna 5</h1>
+<div class="subtitle">Generado el ${fecha}</div>
+
+<h2>Resumen General</h2>
+<div class="stats">
+  <div class="stat"><div class="num">${total.toLocaleString('es-AR')}</div><div class="lbl">Afiliados en el padrón</div></div>
+  <div class="stat"><div class="num">${contactados.toLocaleString('es-AR')}</div><div class="lbl">Contactados</div></div>
+  <div class="stat"><div class="num">${pctContacto}%</div><div class="lbl">Cobertura</div></div>
+  <div class="stat"><div class="num">${conCarnet.toLocaleString('es-AR')}</div><div class="lbl">Quieren carnet</div></div>
+</div>
+
+<h2>Por Tipo de Contacto</h2>
+<table>
+  <tr><th>Tipo</th><th>Cantidad</th><th>%</th></tr>
+  ${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([tipo, cnt]) =>
+    `<tr><td>${tipo}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<h2>Top 5 Barrios</h2>
+<table>
+  <tr><th>Barrio</th><th>Afiliados</th><th>%</th></tr>
+  ${topBarrios.map(([b, cnt]) =>
+    `<tr><td>${b}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<h2>Por Organización</h2>
+<table>
+  <tr><th>Organización</th><th>Afiliados</th><th>%</th></tr>
+  ${topOrgs.map(([o, cnt]) =>
+    `<tr><td>${o}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<div class="footer">Sistema de Relevamiento Territorial PJ CABA · Comuna 5</div>
+</body></html>`;
+
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    }
 
     function initApp() {
       initPadronFilters();
