@@ -2294,6 +2294,137 @@ document.addEventListener('DOMContentLoaded', () => {
 // =================== CARGA RAPIDA ===================
     let cargaSelectedId = null;
 
+// ── EXPORTAR XLSX ────────────────────────────────────────────────────
+    function exportarPadronXLSX() {
+      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+
+      // Filas del padrón
+      const rowsPadron = PADRON.map(a => ({
+        'COMUNA':            a.comuna,
+        'BARRIO':            a.barrio,
+        'CIRCUITO':          a.circuito,
+        'APELLIDO':          a.apellido,
+        'NOMBRE':            a.nombre,
+        'DNI':               a.dni,
+        'GÉNERO':            a.genero,
+        'FECHA_NACIMIENTO':  a.nacimiento,
+        'FECHA_AFILIACION':  a.afiliacion,
+        'DOMICILIO':         a.domicilio,
+        'TELÉFONO':          a.telefono,
+        'ORGANIZACIÓN':      a.organizacion,
+        'QUIERE_CARNET':     a.quiereCarnet,
+        'FECHA_DE_CONTACTO':   a.ultimoContacto || '',
+        'TIPO_DE_TIPO':       a.ultimoTipo || '',
+        'QUIEN_CARGO':   a.ultimoOperador || '',
+        'OBSERVACIONES':   a.observaciones
+      }));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsPadron), 'Padrón');
+      
+      XLSX.writeFile(wb, 'padron_relevamiento.xlsx');
+    }
+
+
+    // ── EXPORTAR PDF ─────────────────────────────────────────────────────
+    function exportarEstadisticasPDF() {
+      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+
+      const total       = PADRON.length;
+      const contactados = PADRON.filter(a => a.ultimoTipo).length;
+      const conCarnet   = PADRON.filter(a => (a.quiereCarnet || '').toUpperCase() === 'SI').length;
+      const pctContacto = total > 0 ? Math.round(contactados / total * 100) : 0;
+
+      // Contar por tipo de contacto
+      const porTipo = {};
+      PADRON.forEach(a => {
+        if (a.ultimoTipo) porTipo[a.ultimoTipo] = (porTipo[a.ultimoTipo] || 0) + 1;
+      });
+
+      // Contar por barrio
+      const porBarrio = {};
+      PADRON.forEach(a => {
+        if (a.barrio) porBarrio[a.barrio] = (porBarrio[a.barrio] || 0) + 1;
+      });
+      const topBarrios = Object.entries(porBarrio).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+      // Contar por organización
+      const porOrg = {};
+      PADRON.forEach(a => {
+        if (a.organizacion) porOrg[a.organizacion] = (porOrg[a.organizacion] || 0) + 1;
+      });
+      const topOrgs = Object.entries(porOrg).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+      const fecha = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+      const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte de Relevamiento Territorial</title>
+<style>
+  body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; font-size: 13px; }
+  h1 { color: #0077B6; font-size: 20px; margin-bottom: 4px; }
+  h2 { color: #0077B6; font-size: 15px; border-bottom: 2px solid #009BDF; padding-bottom: 4px; margin-top: 24px; }
+  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+  .stats { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+  .stat { background: #EDF8FD; border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 120px; text-align: center; }
+  .stat .num { font-size: 28px; font-weight: 700; color: #0077B6; }
+  .stat .lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th { background: #0077B6; color: white; padding: 7px 10px; text-align: left; font-size: 12px; }
+  td { padding: 6px 10px; border-bottom: 1px solid #E2E8F0; font-size: 12px; }
+  tr:nth-child(even) td { background: #F8FAFC; }
+  .footer { margin-top: 32px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 8px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<h1>⭐ Reporte de Relevamiento Territorial — PJ CABA · Comuna 5</h1>
+<div class="subtitle">Generado el ${fecha}</div>
+
+<h2>Resumen General</h2>
+<div class="stats">
+  <div class="stat"><div class="num">${total.toLocaleString('es-AR')}</div><div class="lbl">Afiliados en el padrón</div></div>
+  <div class="stat"><div class="num">${contactados.toLocaleString('es-AR')}</div><div class="lbl">Contactados</div></div>
+  <div class="stat"><div class="num">${pctContacto}%</div><div class="lbl">Cobertura</div></div>
+  <div class="stat"><div class="num">${conCarnet.toLocaleString('es-AR')}</div><div class="lbl">Quieren carnet</div></div>
+</div>
+
+<h2>Por Tipo de Contacto</h2>
+<table>
+  <tr><th>Tipo</th><th>Cantidad</th><th>%</th></tr>
+  ${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([tipo, cnt]) =>
+    `<tr><td>${tipo}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<h2>Top 5 Barrios</h2>
+<table>
+  <tr><th>Barrio</th><th>Afiliados</th><th>%</th></tr>
+  ${topBarrios.map(([b, cnt]) =>
+    `<tr><td>${b}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<h2>Por Organización</h2>
+<table>
+  <tr><th>Organización</th><th>Afiliados</th><th>%</th></tr>
+  ${topOrgs.map(([o, cnt]) =>
+    `<tr><td>${o}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
+  ).join('')}
+</table>
+
+<div class="footer">Sistema de Relevamiento Territorial PJ CABA · Comuna 5</div>
+</body></html>`;
+
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    }
+
+
     // ── PÁGINA RECORRIDO ──────────────────────────────────────────────────
     let recorridoOrdenAsc = true;
     let recorridoCalleActual = '';
