@@ -1111,6 +1111,7 @@
     <div class="nav-tabs" id="navTabs">
       <button class="nav-tab active" onclick="showPage('inicio')">🏠 Inicio</button>
       <button class="nav-tab" onclick="showPage('padron')">👥 Padrón</button>
+      <button class="nav-tab" onclick="showPage('recorrido')">🗺️ Recorrido</button>
       <button class="nav-tab" onclick="showPage('exportar')">📥 Exportar</button>
     </div>
     <button class="nav-mobile-toggle" onclick="toggleMobileNav()">☰</button>
@@ -1126,6 +1127,9 @@
     </button>
     <button class="bottomnav-btn" id="bnExportar" onclick="showPage('exportar');updateBottomNav('exportar')">
       <span class="icon">📥</span>Exportar
+    </button>
+    <button class="bottomnav-btn" id="bnRecorrido" onclick="showPage('recorrido');updateBottomNav('recorrido')">
+      <span class="icon">🗺️</span>Recorrido
     </button>
   </div>
 
@@ -1263,6 +1267,44 @@
           <button class="btn btn-danger" onclick="exportarEstadisticasPDF()">⬇️ Descargar PDF</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE: RECORRIDO ===================== -->
+  <div class="app-page" id="page-recorrido">
+    <div class="card">
+      <div class="card-title">🗺️ Armá tu recorrido por calle</div>
+      <p style="font-size:0.88rem;color:var(--gray-600);margin-bottom:16px;">
+        Buscá una calle para ver los afiliados que aún no fueron contactados.
+      </p>
+
+      <!-- Buscador de calle -->
+      <div style="position:relative;margin-bottom:16px;">
+        <input id="recorridoInput" class="filter-input"
+          placeholder="🔍 Escribí el nombre de la calle..."
+          oninput="buscarCalleRecorrido()"
+          autocomplete="off"
+          style="width:100%;font-size:0.95rem;padding:10px 14px;box-sizing:border-box;">
+        <div id="recorridoDropdown" style="
+          display:none;position:absolute;top:100%;left:0;right:0;
+          background:white;border:1px solid var(--gray-200);border-radius:var(--radius-sm);
+          box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:100;max-height:220px;overflow-y:auto;">
+        </div>
+      </div>
+
+      <!-- Controles de orden (ocultos hasta elegir calle) -->
+      <div id="recorridoControles" style="display:none;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span id="recorridoTitulo" style="font-weight:600;color:var(--celeste-dark);font-size:0.95rem;flex:1;"></span>
+        <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.82rem;" onclick="toggleOrdenRecorrido()">
+          <span id="recorridoOrdenIcon">↑</span> Numeración
+        </button>
+      </div>
+
+      <!-- Contador -->
+      <div id="recorridoContador" style="font-size:0.82rem;color:var(--gray-500);margin-bottom:12px;"></div>
+
+      <!-- Lista de afiliados -->
+      <div id="recorridoLista"></div>
     </div>
   </div>
 
@@ -1581,6 +1623,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (name === 'inicio') renderInicio();
       if (name === 'panel') renderPanel();
       if (name === 'padron') renderPadron();
+      if (name === 'recorrido') initRecorrido();
       if (name === 'mapa') renderMapa();
       document.getElementById('navTabs').classList.remove('open');
     }
@@ -2251,133 +2294,143 @@ document.addEventListener('DOMContentLoaded', () => {
 // =================== CARGA RAPIDA ===================
     let cargaSelectedId = null;
 
-// ── EXPORTAR XLSX ────────────────────────────────────────────────────
-    function exportarPadronXLSX() {
-      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+    // ── PÁGINA RECORRIDO ──────────────────────────────────────────────────
+    let recorridoOrdenAsc = true;
+    let recorridoCalleActual = '';
 
-      // Filas del padrón
-      const rowsPadron = PADRON.map(a => ({
-        'COMUNA':            a.comuna,
-        'BARRIO':            a.barrio,
-        'CIRCUITO':          a.circuito,
-        'APELLIDO':          a.apellido,
-        'NOMBRE':            a.nombre,
-        'DNI':               a.dni,
-        'GÉNERO':            a.genero,
-        'FECHA_NACIMIENTO':  a.nacimiento,
-        'FECHA_AFILIACION':  a.afiliacion,
-        'DOMICILIO':         a.domicilio,
-        'TELÉFONO':          a.telefono,
-        'ORGANIZACIÓN':      a.organizacion,
-        'QUIERE_CARNET':     a.quiereCarnet,
-        'FECHA_DE_CONTACTO':   a.ultimoContacto || '',
-        'TIPO_DE_TIPO':       a.ultimoTipo || '',
-        'QUIEN_CARGO':   a.ultimoOperador || '',
-        'OBSERVACIONES':   a.observaciones
-      }));
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsPadron), 'Padrón');
-      
-      XLSX.writeFile(wb, 'padron_relevamiento.xlsx');
+    function initRecorrido() {
+      // Limpiar al entrar
+      document.getElementById('recorridoInput').value = '';
+      document.getElementById('recorridoDropdown').style.display = 'none';
+      document.getElementById('recorridoControles').style.display = 'none';
+      document.getElementById('recorridoLista').innerHTML = '';
+      document.getElementById('recorridoContador').textContent = '';
+      recorridoCalleActual = '';
     }
 
-    // ── EXPORTAR PDF ─────────────────────────────────────────────────────
-    function exportarEstadisticasPDF() {
-      if (!PADRON.length) { alert('No hay datos para exportar.'); return; }
+    function extraerCalle(domicilio) {
+      // Extrae el nombre de la calle quitando el número y lo que sigue
+      // "ESTADOS UNIDOS 3820 PISO 2" → "ESTADOS UNIDOS"
+      return domicilio.replace(/\s+\d+.*$/, '').trim().toUpperCase();
+    }
 
-      const total       = PADRON.length;
-      const contactados = PADRON.filter(a => a.ultimoTipo).length;
-      const conCarnet   = PADRON.filter(a => (a.quiereCarnet || '').toUpperCase() === 'SI').length;
-      const pctContacto = total > 0 ? Math.round(contactados / total * 100) : 0;
+    function extraerNumero(domicilio) {
+      // Extrae el primer número que aparece después de la calle
+      const match = domicilio.match(/\d+/);
+      return match ? parseInt(match[0]) : 0;
+    }
 
-      // Contar por tipo de contacto
-      const porTipo = {};
-      PADRON.forEach(a => {
-        if (a.ultimoTipo) porTipo[a.ultimoTipo] = (porTipo[a.ultimoTipo] || 0) + 1;
+    function buscarCalleRecorrido() {
+      const q = document.getElementById('recorridoInput').value.trim().toUpperCase();
+      const dropdown = document.getElementById('recorridoDropdown');
+
+      if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+      // Obtener calles únicas del padrón
+      const calles = [...new Set(
+        PADRON
+          .map(a => extraerCalle(a.domicilio))
+          .filter(c => c && c.includes(q))
+      )].sort();
+
+      if (!calles.length) { dropdown.style.display = 'none'; return; }
+
+      dropdown.innerHTML = calles.map(c =>
+        `<div onclick="seleccionarCalle('${c.replace(/'/g, "\'")}')"
+          style="padding:10px 14px;cursor:pointer;font-size:0.9rem;border-bottom:1px solid var(--gray-100);"
+          onmouseover="this.style.background='var(--celeste-xpale)'"
+          onmouseout="this.style.background='white'">${c}</div>`
+      ).join('');
+      dropdown.style.display = 'block';
+    }
+
+    function seleccionarCalle(calle) {
+      recorridoCalleActual = calle;
+      recorridoOrdenAsc = true;
+      document.getElementById('recorridoInput').value = calle;
+      document.getElementById('recorridoDropdown').style.display = 'none';
+      renderRecorrido();
+    }
+
+    function toggleOrdenRecorrido() {
+      recorridoOrdenAsc = !recorridoOrdenAsc;
+      document.getElementById('recorridoOrdenIcon').textContent = recorridoOrdenAsc ? '↑' : '↓';
+      renderRecorrido();
+    }
+
+    function renderRecorrido() {
+      if (!recorridoCalleActual) return;
+
+      // Filtrar: misma calle + sin tipo de contacto
+      const afiliados = PADRON.filter(a => {
+        const calleA = extraerCalle(a.domicilio);
+        const sinContacto = !a.tipoContacto || a.tipoContacto.trim() === '';
+        return calleA === recorridoCalleActual && sinContacto;
       });
 
-      // Contar por barrio
-      const porBarrio = {};
-      PADRON.forEach(a => {
-        if (a.barrio) porBarrio[a.barrio] = (porBarrio[a.barrio] || 0) + 1;
+      // Ordenar por número de puerta
+      afiliados.sort((a, b) => {
+        const nA = extraerNumero(a.domicilio);
+        const nB = extraerNumero(b.domicilio);
+        return recorridoOrdenAsc ? nA - nB : nB - nA;
       });
-      const topBarrios = Object.entries(porBarrio).sort((a,b) => b[1]-a[1]).slice(0, 5);
 
-      // Contar por organización
-      const porOrg = {};
-      PADRON.forEach(a => {
-        if (a.organizacion) porOrg[a.organizacion] = (porOrg[a.organizacion] || 0) + 1;
+      // Mostrar controles y contador
+      const controles = document.getElementById('recorridoControles');
+      controles.style.display = 'flex';
+      document.getElementById('recorridoTitulo').textContent = recorridoCalleActual;
+      document.getElementById('recorridoContador').textContent =
+        afiliados.length
+          ? `${afiliados.length} afiliado${afiliados.length !== 1 ? 's' : ''} sin contacto registrado`
+          : 'No hay afiliados sin contacto en esta calle.';
+
+      if (!afiliados.length) {
+        document.getElementById('recorridoLista').innerHTML =
+          '<div style="text-align:center;padding:32px;color:var(--gray-400);">✅ Todos los afiliados de esta calle ya fueron contactados.</div>';
+        return;
+      }
+
+      // Agrupar por número de puerta para mostrar edificios juntos
+      const porNumero = {};
+      afiliados.forEach(a => {
+        const n = extraerNumero(a.domicilio);
+        if (!porNumero[n]) porNumero[n] = [];
+        porNumero[n].push(a);
       });
-      const topOrgs = Object.entries(porOrg).sort((a,b) => b[1]-a[1]).slice(0, 8);
 
-      const fecha = new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const html = Object.entries(porNumero).map(([num, lista]) => `
+        <div style="margin-bottom:8px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--gray-400);text-transform:uppercase;
+                      letter-spacing:0.05em;padding:4px 0;border-bottom:1px solid var(--gray-100);margin-bottom:4px;">
+            N° ${num}
+          </div>
+          ${lista.map(a => `
+            <div onclick="openModal(${a.id})"
+              style="display:flex;align-items:center;gap:12px;padding:10px 12px;
+                     background:white;border:1px solid var(--gray-200);border-radius:var(--radius-sm);
+                     margin-bottom:4px;cursor:pointer;transition:all 0.15s;"
+              onmouseover="this.style.background='var(--celeste-xpale)';this.style.borderColor='var(--celeste)'"
+              onmouseout="this.style.background='white';this.style.borderColor='var(--gray-200)'">
+              <div style="width:36px;height:36px;background:var(--celeste-pale);border-radius:50%;
+                           display:flex;align-items:center;justify-content:center;
+                           font-weight:700;color:var(--celeste-dark);font-size:0.85rem;flex-shrink:0;">
+                ${a.apellido.charAt(0)}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:0.9rem;color:var(--gray-800);">
+                  ${a.apellido}, ${a.nombre}
+                </div>
+                <div style="font-size:0.78rem;color:var(--gray-500);">
+                  DNI ${a.dni} · ${a.domicilio}
+                </div>
+              </div>
+              <div style="color:var(--gray-300);font-size:1rem;">›</div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
 
-      const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Reporte de Relevamiento Territorial</title>
-<style>
-  body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; font-size: 13px; }
-  h1 { color: #0077B6; font-size: 20px; margin-bottom: 4px; }
-  h2 { color: #0077B6; font-size: 15px; border-bottom: 2px solid #009BDF; padding-bottom: 4px; margin-top: 24px; }
-  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; }
-  .stats { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
-  .stat { background: #EDF8FD; border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 120px; text-align: center; }
-  .stat .num { font-size: 28px; font-weight: 700; color: #0077B6; }
-  .stat .lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th { background: #0077B6; color: white; padding: 7px 10px; text-align: left; font-size: 12px; }
-  td { padding: 6px 10px; border-bottom: 1px solid #E2E8F0; font-size: 12px; }
-  tr:nth-child(even) td { background: #F8FAFC; }
-  .footer { margin-top: 32px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 8px; }
-  @media print { body { padding: 0; } }
-</style>
-</head>
-<body>
-<h1>⭐ Reporte de Relevamiento Territorial — PJ CABA · Comuna 5</h1>
-<div class="subtitle">Generado el ${fecha}</div>
-
-<h2>Resumen General</h2>
-<div class="stats">
-  <div class="stat"><div class="num">${total.toLocaleString('es-AR')}</div><div class="lbl">Afiliados en el padrón</div></div>
-  <div class="stat"><div class="num">${contactados.toLocaleString('es-AR')}</div><div class="lbl">Contactados</div></div>
-  <div class="stat"><div class="num">${pctContacto}%</div><div class="lbl">Cobertura</div></div>
-  <div class="stat"><div class="num">${conCarnet.toLocaleString('es-AR')}</div><div class="lbl">Quieren carnet</div></div>
-</div>
-
-<h2>Por Tipo de Contacto</h2>
-<table>
-  <tr><th>Tipo</th><th>Cantidad</th><th>%</th></tr>
-  ${Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([tipo, cnt]) =>
-    `<tr><td>${tipo}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
-  ).join('')}
-</table>
-
-<h2>Top 5 Barrios</h2>
-<table>
-  <tr><th>Barrio</th><th>Afiliados</th><th>%</th></tr>
-  ${topBarrios.map(([b, cnt]) =>
-    `<tr><td>${b}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
-  ).join('')}
-</table>
-
-<h2>Por Organización</h2>
-<table>
-  <tr><th>Organización</th><th>Afiliados</th><th>%</th></tr>
-  ${topOrgs.map(([o, cnt]) =>
-    `<tr><td>${o}</td><td>${cnt.toLocaleString('es-AR')}</td><td>${Math.round(cnt/total*100)}%</td></tr>`
-  ).join('')}
-</table>
-
-<div class="footer">Sistema de Relevamiento Territorial PJ CABA · Comuna 5</div>
-</body></html>`;
-
-      const win = window.open('', '_blank');
-      win.document.write(html);
-      win.document.close();
-      setTimeout(() => win.print(), 500);
+      document.getElementById('recorridoLista').innerHTML = html;
     }
 
     function initApp() {
