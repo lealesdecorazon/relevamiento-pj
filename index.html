@@ -1270,8 +1270,8 @@
     </div>
   </div>
 
-  <!-- ===================== PAGE: RECORRIDO ===================== -->
-  <div class="app-page" id="page-recorrido">
+ <!-- ===================== PAGE: RECORRIDO ===================== -->
+<div class="app-page" id="page-recorrido">
     <div class="card">
       <div class="card-title">🗺️ Armá tu recorrido por calle</div>
       <p style="font-size:0.88rem;color:var(--gray-600);margin-bottom:16px;">
@@ -1285,18 +1285,37 @@
           oninput="buscarCalleRecorrido()"
           autocomplete="off"
           style="width:100%;font-size:0.95rem;padding:10px 14px;box-sizing:border-box;">
+        
         <div id="recorridoDropdown" style="
           display:none;position:absolute;top:100%;left:0;right:0;
           background:white;border:1px solid var(--gray-200);border-radius:var(--radius-sm);
           box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:100;max-height:220px;overflow-y:auto;">
         </div>
+      </div> 
+
+      <Barra de filtros para Recorrido -->
+      <div class="filters-bar" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <!-- Selector de Circuito -->
+        <select class="filter-select" id="filtCircuitoRecorrido" onchange="actualizarFiltrosRecorrido()" style="flex: 1;">
+          <option value="">Todos los circuitos</option>
+        </select>
+        
+        <!-- Selector de Aceras (Pares/Impares) -->
+        <select class="filter-select" id="filterAceraRecorrido" onchange="actualizarFiltrosRecorrido()" style="flex: 1;">
+          <option value="todos">Todas las alturas</option>
+          <option value="pares">Solo Pares</option>
+          <option value="impares">Solo Impares</option>
+        </select>
       </div>
 
-      <!-- Controles de orden (ocultos hasta elegir calle) -->
-      <div id="recorridoControles" style="display:none;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+    </div> 
+  </div> 
+
+     <!-- Controles de orden (ocultos hasta elegir calle) -->
+        <div id="recorridoControles" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
         <span id="recorridoTitulo" style="font-weight:600;color:var(--celeste-dark);font-size:0.95rem;flex:1;"></span>
-        <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.82rem;" onclick="toggleOrdenRecorrido()">
-          <span id="recorridoOrdenIcon">↑</span> Numeración
+        <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.82rem;display:flex;align-items:center;gap:4px;" onclick="toggleOrdenRecorrido()">
+          Numeración <span id="recorridoOrdenIcon">↑</span>
         </button>
       </div>
 
@@ -2425,7 +2444,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ── PÁGINA RECORRIDO ──────────────────────────────────────────────────
+// ── PÁGINA RECORRIDO ──────────────────────────────────────────────────
     let recorridoOrdenAsc = true;
     let recorridoCalleActual = '';
 
@@ -2437,6 +2456,40 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('recorridoLista').innerHTML = '';
       document.getElementById('recorridoContador').textContent = '';
       recorridoCalleActual = '';
+
+      // NUEVO: Inicializar los filtros de recorrido
+      const circuitoSelect = document.getElementById('filtCircuitoRecorrido');
+      if (circuitoSelect && typeof PADRON !== 'undefined') {
+        // Limpiamos las opciones anteriores dejando solo la de "Todos los circuitos"
+        circuitoSelect.innerHTML = '<option value="">Todos los circuitos</option>';
+
+        // Extraemos los circuitos únicos del padrón cargado
+        const circuitosUnicos = [...new Set(PADRON.map(a => a.circuito || a.Circuito || ''))]
+          .map(c => c.toString().trim())
+          .filter(c => c !== '')
+          .sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+
+        // Agregamos cada circuito como opción
+        circuitosUnicos.forEach(circuito => {
+          const option = document.createElement('option');
+          option.value = circuito;
+          option.textContent = `Circuito ${circuito}`;
+          circuitoSelect.appendChild(option);
+        });
+        
+        circuitoSelect.value = '';
+      }
+
+      // NUEVO: Resetear el filtro de acera (pares/impares)
+      const aceraSelect = document.getElementById('filterAceraRecorrido');
+      if (aceraSelect) {
+        aceraSelect.value = 'todos';
+      }
+    }
+
+    // NUEVO: Función para redibujar cuando cambian los desplegables de filtros
+    function actualizarFiltrosRecorrido() {
+      renderRecorrido();
     }
 
     function extraerCalle(domicilio) {
@@ -2457,9 +2510,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (q.length < 2) { dropdown.style.display = 'none'; return; }
 
-      // Obtener calles únicas del padrón
+      // NUEVO: Capturar el circuito seleccionado para sugerir solo calles que existan en ese circuito
+      const filterCircuito = document.getElementById('filtCircuitoRecorrido').value;
+
+      // Obtener calles únicas del padrón aplicando el filtro de circuito si corresponde
       const calles = [...new Set(
         PADRON
+          .filter(a => {
+            if (!filterCircuito) return true;
+            const cA = (a.circuito || a.Circuito || '').toString().trim();
+            return cA === filterCircuito;
+          })
           .map(a => extraerCalle(a.domicilio))
           .filter(c => c && c.includes(q))
       )].sort();
@@ -2467,7 +2528,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!calles.length) { dropdown.style.display = 'none'; return; }
 
       dropdown.innerHTML = calles.map(c =>
-        `<div onclick="seleccionarCalle('${c.replace(/'/g, "\'")}')"
+        `<div onclick="seleccionarCalle('${c.replace(/'/g, "\\'")}')"
           style="padding:10px 14px;cursor:pointer;font-size:0.9rem;border-bottom:1px solid var(--gray-100);"
           onmouseover="this.style.background='var(--celeste-xpale)'"
           onmouseout="this.style.background='white'">${c}</div>`
@@ -2492,36 +2553,50 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderRecorrido() {
       if (!recorridoCalleActual) return;
 
-      // Filtrar: misma calle + sin tipo de contacto
+      // 1. Capturar valores de los selectores de filtros
+      const filterCircuito = document.getElementById('filtCircuitoRecorrido').value;
+      const filterAcera = document.getElementById('filterAceraRecorrido').value;
+
+      // 2. Filtrar: misma calle + sin tipo de contacto + aplicar nuevos filtros de circuito y aceras
       const afiliados = PADRON.filter(a => {
         const calleA = extraerCalle(a.domicilio);
         const sinContacto = !a.tipoContacto || a.tipoContacto.trim() === '';
-        return calleA === recorridoCalleActual && sinContacto;
+        
+        // Comprobación de calle y contacto
+        if (calleA !== recorridoCalleActual || !sinContacto) return false;
+
+        // FILTRO: Circuito
+        if (filterCircuito) {
+          const cA = (a.circuito || a.Circuito || '').toString().trim();
+          if (cA !== filterCircuito) return false;
+        }
+
+        // FILTRO: Altura (Par / Impar)
+        if (filterAcera !== 'todos') {
+          const num = extraerNumero(a.domicilio);
+          if (filterAcera === 'pares' && num % 2 !== 0) return false;
+          if (filterAcera === 'impares' && num % 2 === 0) return false;
+        }
+
+        return true;
       });
 
-      // Ordenar por número de puerta
-      afiliados.sort((a, b) => {
-        const nA = extraerNumero(a.domicilio);
-        const nB = extraerNumero(b.domicilio);
-        return recorridoOrdenAsc ? nA - nB : nB - nA;
-      });
-
-      // Mostrar controles y contador
+      // 3. Mostrar controles y contador
       const controles = document.getElementById('recorridoControles');
       controles.style.display = 'flex';
       document.getElementById('recorridoTitulo').textContent = recorridoCalleActual;
       document.getElementById('recorridoContador').textContent =
         afiliados.length
           ? `${afiliados.length} afiliado${afiliados.length !== 1 ? 's' : ''} sin contacto registrado`
-          : 'No hay afiliados sin contacto en esta calle.';
+          : 'No hay afiliados sin contacto en esta calle con los filtros seleccionados.';
 
       if (!afiliados.length) {
         document.getElementById('recorridoLista').innerHTML =
-          '<div style="text-align:center;padding:32px;color:var(--gray-400);">✅ Todos los afiliados de esta calle ya fueron contactados.</div>';
+          '<div style="text-align:center;padding:32px;color:var(--gray-400);">✅ Todos los afiliados que cumplen con los filtros ya fueron contactados.</div>';
         return;
       }
 
-      // Agrupar por número de puerta para mostrar edificios juntos
+      // 4. Agrupar por número de puerta para mostrar edificios juntos
       const porNumero = {};
       afiliados.forEach(a => {
         const n = extraerNumero(a.domicilio);
@@ -2529,7 +2604,16 @@ document.addEventListener('DOMContentLoaded', () => {
         porNumero[n].push(a);
       });
 
-      const html = Object.entries(porNumero).map(([num, lista]) => `
+      // 5. Convertir el objeto agrupado a un Array y ORDENAR los grupos según 'recorridoOrdenAsc'
+      const gruposOrdenados = Object.entries(porNumero);
+      gruposOrdenados.sort((a, b) => {
+        const numA = parseInt(a[0], 10);
+        const numB = parseInt(b[0], 10);
+        return recorridoOrdenAsc ? numA - numB : numB - numA;
+      });
+
+      // 6. Generar el HTML final respetando el orden correcto
+      const html = gruposOrdenados.map(([num, lista]) => `
         <div style="margin-bottom:8px;">
           <div style="font-size:0.75rem;font-weight:700;color:var(--gray-400);text-transform:uppercase;
                       letter-spacing:0.05em;padding:4px 0;border-bottom:1px solid var(--gray-100);margin-bottom:4px;">
@@ -2564,6 +2648,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('recorridoLista').innerHTML = html;
     }
 
+
     function initApp() {
       initPadronFilters();
       filteredPadron = [...PADRON];
@@ -2581,5 +2666,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape') closeModal();
       });
     }
+
 
   </script>
