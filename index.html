@@ -1203,6 +1203,9 @@
       <div class="filters-bar" id="padronFilters">
         <input class="filter-input" id="searchInput" placeholder="🔍 Apellido, nombre o DNI..."
           oninput="filterPadron()">
+        <select class="filter-select" id="filtOrganizacion" onchange="filterPadron()">
+          <option value="">Todas las organizaciones</option>
+        </select>
         <select class="filter-select" id="filtBarrio" onchange="filterPadron()">
           <option value="">Todos los barrios</option>
         </select>
@@ -1384,6 +1387,7 @@
                 <option value="">— No indica —</option>
                 <option>La Cámpora</option>
                 <option>La Cámpora - Adherente</option>
+                <option>Kirchnerismo no Organizado</option>
                 <option>Aliados</option>
                 <option>PxC</option>
                 <option>NEP</option>
@@ -2102,6 +2106,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const circuitos = [...new Set(PADRON.map(a => a.circuito))].sort();
       const circEl = document.getElementById('filtCircuito');
       circuitos.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = 'Circuito ' + c; circEl.appendChild(o); });
+    
+      const orgEl = document.getElementById('filtOrganizacion');
+      if (orgEl) {
+        const organizaciones = [...new Set(PADRON.map(a => a.organizacion || a.Organizacion).filter(Boolean))].sort();
+        organizaciones.forEach(org => { const o = document.createElement('option'); o.value = org; o.textContent = org; orgEl.appendChild(o); });
+      }
+
     }
 
     function filterPadron() {
@@ -2109,6 +2120,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const barrio = document.getElementById('filtBarrio').value;
       const circuito = document.getElementById('filtCircuito').value;
       const contacto = document.getElementById('filtContacto').value;
+      const orgEl = document.getElementById('filtOrganizacion');
+      const organizacion = orgEl ? orgEl.value : '';
+
 
       filteredPadron = PADRON.filter(a => {
         if (search) {
@@ -2117,6 +2131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (barrio && a.barrio !== barrio) return false;
         if (circuito && a.circuito !== circuito) return false;
+        if (organizacion) {
+          const aOrg = a.organizacion || a.Organizacion || '';
+          if (aOrg !== organizacion) return false;
+        }
         if (contacto === 'sin_contacto' && a.seguimientos.length > 0) return false;
         if (contacto && contacto !== 'sin_contacto') {
           if (!a.seguimientos.some(s => s.tipo === contacto)) return false;
@@ -2132,6 +2150,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('filtBarrio').value = '';
       document.getElementById('filtCircuito').value = '';
       document.getElementById('filtContacto').value = '';
+      const orgEl = document.getElementById('filtOrganizacion');
+      if (orgEl) orgEl.value = '';
+
       filteredPadron = [...PADRON];
       currentPage = 1;
       renderPadron();
