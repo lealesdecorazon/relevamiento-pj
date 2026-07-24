@@ -2227,8 +2227,21 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPadron();
     }
 
-    // =================== MODAL ===================
-    function openModal(id) {
+
+   // =================== MODAL ===================
+   
+    function formatearFecha(fechaStr) {
+      if (!fechaStr) return '—';
+      const soloFecha = fechaStr.toString().split('T')[0];
+      const partes = soloFecha.split('-');
+      if (partes.length === 3) {
+        const [anio, mes, dia] = partes;
+        return `${dia}/${mes}/${anio}`;
+      }
+      return fechaStr;
+    }
+
+ function openModal(id) {
       const a = PADRON.find(x => x.id === id);
       if (!a) return;
       selectedAfiliadoId = id;
@@ -2240,7 +2253,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('mBarrio').textContent = a.barrio;
       document.getElementById('mCircuito').textContent = `${a.circuito} — Comuna ${a.comuna}`;
       document.getElementById('mTelefono').textContent = a.telefono || '—';
-      document.getElementById('mNacimiento').textContent = a.nacimiento || '—';
+      document.getElementById('mNacimiento').textContent = formatearFecha(a.nacimiento);
       document.getElementById('mOrgPadron').textContent = a.organizacion || '—';
 
       // Historial
@@ -2251,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalHistorial').innerHTML = [...hist].reverse().map(s => `
       <div class="historial-item">
         <div class="historial-meta">
-          <span>📅 ${s.fecha}</span>
+          <span>📅 ${formatearFecha(s.fecha)}</span>
           <span>👤 ${s.operador}</span>
         </div>
         <div style="font-weight:600; margin-bottom:3px;">${s.tipo}</div>
@@ -2328,7 +2341,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (document.getElementById('page-inicio').classList.contains('active')) renderInicio();
     }
 
-   
+
 
 // =================== CARGA RAPIDA ===================
     let cargaSelectedId = null;
