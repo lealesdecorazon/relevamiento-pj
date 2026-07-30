@@ -1344,7 +1344,7 @@
           <div class="modal-section-title">📋 Datos del Padrón</div>
           <div class="form-row">
             <div><span class="form-label">DNI</span><br><span id="mDNI"></span></div>
-            <div><span class="form-label">Profesión</span><br><span id="mProfesion">—</span></div>
+            <div><span class="form-label">Fecha de Nacimiento</span><br><span id="mNacimiento">—</span></div>
           </div>
           <div style="margin-top:8px;"><span class="form-label">Domicilio</span><br><span id="mDomicilio"></span></div>
           <div class="form-row" style="margin-top:8px;">
@@ -1353,7 +1353,7 @@
           </div>
           <div class="form-row" style="margin-top:8px;">
             <div><span class="form-label">Teléfono</span><br><span id="mTelefono">—</span></div>
-            <div><span class="form-label">Fecha de Nacimiento</span><br><span id="mNacimiento">—</span></div>
+            <div><span class="form-label">Correo Electrónico</span><br><span id="mMail">—</span></div>
           </div>
           <div style="margin-top:8px;"><span class="form-label">Organización</span><br><span id="mOrgPadron">—</span></div>
         </div>
@@ -1571,6 +1571,7 @@ document.addEventListener('DOMContentLoaded', () => {
               comuna:         norm('COMUNA'),
               domicilio:      norm('DOMICILIO'),
               telefono:       pick('TELÉFONO', 'TELEFONO'),
+              mail:           pick('MAIL', 'Mail', 'mail', 'CORREO', 'EMAIL', 'Correo Electrónico'),
               nacimiento:     pick('FECHA_DE_NACIMIENTO') || '—',
               genero:         pick('GÉNERO', 'GENERO') || '—',
               profesion:      pick('PROFESIÓN', 'PROFESION') || '—',
@@ -2248,7 +2249,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.getElementById('modalNombre').textContent = `${a.apellido}, ${a.nombre}`;
       document.getElementById('mDNI').textContent = a.dni;
-      document.getElementById('mProfesion').textContent = a.profesion || '—';
+      document.getElementById('mMail').textContent = a.mail || '—';
       document.getElementById('mDomicilio').textContent = a.domicilio;
       document.getElementById('mBarrio').textContent = a.barrio;
       document.getElementById('mCircuito').textContent = `${a.circuito} — Comuna ${a.comuna}`;
